@@ -43,30 +43,44 @@ replaying recorded responses (in `tests/fixtures/`) through
 
 ## Integration tests (opt-in)
 
-The suite includes smoke tests against a **live local Ollama**, marked
-`@pytest.mark.integration` and skipped unless `SANCTUM_TEST_OLLAMA_URL`
-is set. To run them:
+The suite includes smoke tests against **live local model servers**,
+marked `@pytest.mark.integration` and skipped unless the matching
+environment variable is set:
 
-1. Install Ollama (https://ollama.com) and start it: `ollama serve`
-2. Pull a small model (fast, ~400 MB):
+- `SANCTUM_TEST_OPENAI_COMPAT_URL` — exercises `OpenAICompatibleOracle`
+  and the robust tool-calling loop end-to-end against **any** server
+  exposing `/v1/chat/completions` (llama.cpp's `llama-server`, Ollama's
+  `/v1`, vLLM, LM Studio). Set it to the exact base URL, version prefix
+  included.
+- `SANCTUM_TEST_OLLAMA_URL` — exercises the native `OllamaOracle`
+  (`/api/chat`) against an Ollama daemon. Base URL without `/v1`.
 
-   ```sh
-   ollama pull qwen2.5:0.5b
-   ```
+With llama.cpp's `llama-server` (any small instruct GGUF works):
 
-3. Point the suite at the server and run the marked tests:
+```sh
+llama-server -m qwen2.5-0.5b-instruct-q4_k_m.gguf --port 8080 -c 4096 --jinja
 
-   ```sh
-   # PowerShell
-   $env:SANCTUM_TEST_OLLAMA_URL = "http://127.0.0.1:11434"
-   pytest -m integration
+# bash
+SANCTUM_TEST_OPENAI_COMPAT_URL=http://127.0.0.1:8080/v1 pytest -m integration
 
-   # bash
-   SANCTUM_TEST_OLLAMA_URL=http://127.0.0.1:11434 pytest -m integration
-   ```
+# PowerShell
+$env:SANCTUM_TEST_OPENAI_COMPAT_URL = "http://127.0.0.1:8080/v1"
+pytest -m integration
+```
 
-Override the model with `SANCTUM_TEST_OLLAMA_MODEL` (default
-`qwen2.5:0.5b`). These tests assert transport and parsing against a real
+With Ollama (`ollama serve` + `ollama pull qwen2.5:0.5b`), both adapters
+can run in one pass:
+
+```sh
+SANCTUM_TEST_OLLAMA_URL=http://127.0.0.1:11434 \
+SANCTUM_TEST_OPENAI_COMPAT_URL=http://127.0.0.1:11434/v1 \
+pytest -m integration
+```
+
+Model overrides: `SANCTUM_TEST_OLLAMA_MODEL` and
+`SANCTUM_TEST_OPENAI_COMPAT_MODEL` (both default `qwen2.5:0.5b`;
+`llama-server` ignores the name and serves whatever model it loaded).
+These tests assert transport, parsing, and loop survival against a real
 server — never model quality — so any chat-capable model works.
 
 ## Style
