@@ -1,0 +1,22 @@
+{
+  "id": "chatcmpl-141",
+  "object": "chat.completion",
+  "created": 1752494460,
+  "model": "qwen2.5:7b",
+  "system_fingerprint": "fp_ollama",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "The phrase has two words."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 260,
+    "completion_tokens": 9,
+    "total_tokens": 269
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "chatcmpl-142",
+  "object": "chat.completion",
+  "created": 1752494520,
+  "model": "llama3.2:3b",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_broken1",
+            "type": "function",
+            "function": {
+              "name": "word_count",
+              "arguments": "{\"text\": \"lux aeterna"
+            }
+          }
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ]
+}

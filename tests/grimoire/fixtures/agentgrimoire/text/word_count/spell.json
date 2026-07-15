@@ -1,0 +1,12 @@
+{
+  "name": "word_count",
+  "description": "Count the words in a text.",
+  "entrypoint": "spell.py:word_count",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "text": {"type": "string"}
+    },
+    "required": ["text"]
+  }
+}

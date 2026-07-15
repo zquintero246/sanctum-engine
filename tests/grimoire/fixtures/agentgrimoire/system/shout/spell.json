@@ -1,0 +1,5 @@
+{
+  "name": "shout",
+  "description": "Uppercase a text and add an exclamation mark.",
+  "entrypoint": "spell.py:shout"
+}
