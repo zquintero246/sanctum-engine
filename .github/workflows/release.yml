@@ -1,0 +1,58 @@
+# Release to PyPI on version tags (v0.2.0, v1.0.0, ...).
+#
+# Uses PyPI *trusted publishing* — no API tokens stored in the repo.
+# One-time manual setup required:
+#
+#   1. On PyPI (pypi.org), open the `sanctum-engine` project (or use
+#      "Add a new pending publisher" before the first release) and add a
+#      trusted publisher with:
+#        - Owner:        zquintero246
+#        - Repository:   sanctum-engine
+#        - Workflow:     release.yml
+#        - Environment:  pypi
+#   2. On GitHub, create an environment named `pypi`
+#      (Settings -> Environments); optionally add required reviewers so a
+#      human approves every publish.
+#
+# After that: `git tag v0.2.0 && git push --tags` releases.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install build
+          python -m build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # required for PyPI trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
