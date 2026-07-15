@@ -1,0 +1,51 @@
+site_name: Sanctum
+site_description: >-
+  Minimal, local-first orchestration engine for AI agents — cyclic state
+  graphs run by supersteps.
+site_url: https://zquintero246.github.io/sanctum-engine/
+repo_url: https://github.com/zquintero246/sanctum-engine
+repo_name: zquintero246/sanctum-engine
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: deep purple
+    accent: amber
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: false
+            members_order: source
+
+nav:
+  - Home: index.md
+  - Getting started: getting-started.md
+  - Concepts:
+      - Ritual & Rite: concepts/ritual.md
+      - Sigils & edges: concepts/sigils-and-edges.md
+      - Aether & Conduits: concepts/aether.md
+      - Codex & Seals: concepts/codex.md
+      - Omens & streaming: concepts/omens.md
+      - Oracles: concepts/oracles.md
+      - Spells & Tomes: concepts/spells.md
+      - Wards: concepts/wards.md
+      - Resilience policies: concepts/policies.md
+  - Guides:
+      - Human-in-the-loop: guides/human-in-the-loop.md
+      - Time-travel: guides/time-travel.md
+      - Robust tool-calling: guides/robust-tool-calling.md
+      - Tracing & the HTML viewer: guides/tracing.md
+  - Comparison: comparison.md
+  - API reference: api.md
+  - Architecture (design doc): architecture.md
