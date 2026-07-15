@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+.venv*/
+.coverage
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+site/
+*.sanctum-trace.json
+*.sanctum-trace.html
