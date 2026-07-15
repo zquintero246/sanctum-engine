@@ -131,6 +131,13 @@ def parse_spell_blocks(text: str) -> tuple[str, list[SpellCall]]:
     flagged ``"__malformed_json__"``, so the repair layer treats prompted
     failures exactly like native ones. The prose outside the blocks is
     returned as the response text.
+
+    Small local models frequently ignore the delimiter format and emit
+    the call as bare JSON instead (observed with 0.5-3B models on
+    llama-server): when no blocks are present but the whole answer parses
+    to an object carrying a ``"spell"`` name, it is routed through the
+    repair layer as a malformed call — validated, executed, and surfaced
+    as a SpellCallRepaired Omen.
     """
     calls: list[SpellCall] = []
     for block in _BLOCK.findall(text):
@@ -152,6 +159,15 @@ def parse_spell_blocks(text: str) -> tuple[str, list[SpellCall]]:
                     arguments={"__malformed_json__": block.strip()},
                 )
             )
+    if not calls:
+        bare = extract_json(text)
+        if bare is not None and isinstance(bare.get("spell"), str) and bare["spell"]:
+            return "", [
+                SpellCall(
+                    spell=bare["spell"],
+                    arguments={"__malformed_json__": text.strip()},
+                )
+            ]
     prose = _BLOCK.sub("", text).strip()
     return prose, calls
 

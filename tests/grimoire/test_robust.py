@@ -206,6 +206,42 @@ def test_parse_spell_blocks_extracts_calls_and_prose() -> None:
     assert calls[0].arguments == {"text": "lux aeterna"}
 
 
+def test_parse_spell_blocks_recovers_bare_json_call() -> None:
+    # Observed with small models on llama-server: the delimiter format is
+    # ignored and a bare JSON call object is emitted instead.
+    text = (
+        '{"text": "lux aeterna semper", "spell": "word_count", '
+        '"arguments": {"text": "lux aeterna semper"}}'
+    )
+    prose, calls = parse_spell_blocks(text)
+    assert prose == ""
+    assert len(calls) == 1
+    assert calls[0].spell == "word_count"
+    assert "__malformed_json__" in calls[0].arguments  # repair layer takes over
+
+
+async def test_prompted_bare_json_call_is_repaired_and_cast() -> None:
+    inner = ScriptedOracle(
+        [
+            OracleResponse(
+                text='{"spell": "word_count", "arguments": {"text": "lux aeterna"}}'
+            ),
+            OracleResponse(text="Two words."),
+        ]
+    )
+    entity = summon(inner, Tome([word_count]), spell_calling="prompted")
+
+    omens = [
+        omen
+        async for omen in entity.astream(user_input("count"), mode="omens")
+    ]
+    repaired = [omen for omen in omens if isinstance(omen, SpellCallRepaired)]
+    assert repaired and repaired[0].spell == "word_count"
+    messages = omens[-1].aether["messages"]
+    assert messages[2]["content"] == "2"  # the Spell actually ran
+    assert messages[-1]["content"] == "Two words."
+
+
 async def test_prompted_strategy_end_to_end_through_summon() -> None:
     inner = ScriptedOracle(
         [
