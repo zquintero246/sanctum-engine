@@ -31,6 +31,62 @@ from sanctum.oracle._shared import (
 from sanctum.oracle.core import Oracle, OracleResponse, SpellCall
 
 
+def format_messages(
+    messages: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Translate sanctum's transcript into the OpenAI wire format.
+
+    The engine's transcript uses its own vocabulary: assistant messages
+    carry ``spell_calls`` and Spell results travel as ``role: "spell"``
+    with a ``call_id``. Servers only render what their chat template
+    knows — sent verbatim, the model would never see its own tool
+    results (and small models then re-call the same Spell forever). So:
+
+    - assistant + ``spell_calls`` → OpenAI ``tool_calls`` (arguments as
+      a JSON string, content null when empty);
+    - ``role: "spell"`` → ``role: "tool"`` with ``tool_call_id``;
+    - everything else passes through, minus sanctum-only keys.
+    """
+    formatted: list[dict[str, Any]] = []
+    for original in messages:
+        message = dict(original)
+        if message.get("role") == "assistant" and message.get("spell_calls"):
+            formatted.append(
+                {
+                    "role": "assistant",
+                    "content": message.get("content") or None,
+                    "tool_calls": [
+                        {
+                            "id": call.get("call_id") or f"call_{index}",
+                            "type": "function",
+                            "function": {
+                                "name": call.get("spell", ""),
+                                "arguments": json.dumps(
+                                    call.get("arguments", {}),
+                                    ensure_ascii=False,
+                                ),
+                            },
+                        }
+                        for index, call in enumerate(message["spell_calls"])
+                    ],
+                }
+            )
+            continue
+        if message.get("role") == "spell":
+            formatted.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": message.get("call_id", ""),
+                    "content": str(message.get("content", "")),
+                }
+            )
+            continue
+        message.pop("spell_calls", None)
+        message.pop("error", None)
+        formatted.append(message)
+    return formatted
+
+
 def build_payload(
     arcana: str,
     messages: Sequence[Mapping[str, Any]],
@@ -41,13 +97,15 @@ def build_payload(
 ) -> dict[str, Any]:
     """Build the /chat/completions request body.
 
-    Spell schemas map to OpenAI ``tools``; `extra_body` entries (e.g.
-    ``temperature``, ``max_tokens``) merge into the top level last, so
-    they can override anything.
+    The transcript is translated through ``format_messages`` (sanctum
+    spell vocabulary → OpenAI tool vocabulary); Spell schemas map to
+    OpenAI ``tools``; `extra_body` entries (e.g. ``temperature``,
+    ``max_tokens``) merge into the top level last, so they can override
+    anything.
     """
     payload: dict[str, Any] = {
         "model": arcana,
-        "messages": [dict(message) for message in messages],
+        "messages": format_messages(messages),
         "stream": stream,
     }
     if spells:

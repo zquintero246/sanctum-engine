@@ -7,6 +7,16 @@ CONTRIBUTING.md for what counts as a breaking change pre-1.0).
 
 ## [Unreleased]
 
+### Fixed
+- `OpenAICompatibleOracle` now translates the transcript to the OpenAI
+  wire format before sending: assistant `spell_calls` become
+  `tool_calls` (arguments as a JSON string, null content) and
+  `role: "spell"` results become `role: "tool"` with `tool_call_id`.
+  Sent verbatim, chat templates dropped the spell results, so models
+  never saw their own tool output and small models re-called the same
+  Spell indefinitely — the misbehavior previously attributed to model
+  quality. Verified against a live llama-server: one cast, clean answer.
+
 ### Added
 - Circles (subgraphs): `circle(rite, name=..., input_map=..., output_map=...)`
   seals a compiled Rite into a Sigil function — the inner Rite performs a

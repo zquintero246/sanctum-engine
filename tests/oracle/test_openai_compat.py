@@ -190,3 +190,48 @@ async def test_stream_error_status_is_mapped_too() -> None:
     with pytest.raises(OracleResponseError, match="404"):
         async for _ in oracle.stream_generate([{"role": "user", "content": "?"}]):
             pass
+
+
+def test_format_messages_translates_spell_vocabulary():
+    from sanctum.oracle.openai_compat import format_messages
+
+    transcript = [
+        {"role": "system", "content": "You are a scryer."},
+        {"role": "user", "content": "count the seals"},
+        {
+            "role": "assistant",
+            "content": "",
+            "spell_calls": [
+                {"call_id": "abc123", "spell": "scry", "arguments": {"topic": "door"}}
+            ],
+        },
+        {"role": "spell", "spell": "scry", "call_id": "abc123", "content": "7"},
+        {
+            "role": "spell",
+            "spell": "scry",
+            "call_id": "zzz",
+            "content": "SpellExecutionError: boom",
+            "error": True,
+        },
+        {"role": "assistant", "content": "Seven seals."},
+    ]
+    wire = format_messages(transcript)
+
+    assert wire[0] == {"role": "system", "content": "You are a scryer."}
+    call_message = wire[2]
+    assert call_message["content"] is None  # null, not "" — templates skip it
+    assert call_message["tool_calls"] == [
+        {
+            "id": "abc123",
+            "type": "function",
+            "function": {"name": "scry", "arguments": '{"topic": "door"}'},
+        }
+    ]
+    assert wire[3] == {"role": "tool", "tool_call_id": "abc123", "content": "7"}
+    # error markers are sanctum-internal; the wire only carries the text
+    assert wire[4] == {
+        "role": "tool",
+        "tool_call_id": "zzz",
+        "content": "SpellExecutionError: boom",
+    }
+    assert wire[5] == {"role": "assistant", "content": "Seven seals."}
