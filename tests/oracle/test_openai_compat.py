@@ -235,3 +235,48 @@ def test_format_messages_translates_spell_vocabulary():
         "content": "SpellExecutionError: boom",
     }
     assert wire[5] == {"role": "assistant", "content": "Seven seals."}
+
+
+async def test_stream_response_accumulates_tool_calls():
+    payload = (FIXTURES / "openai_stream_tools.sse").read_text(encoding="utf-8")
+
+    def handler(request):
+        return httpx.Response(
+            200, content=payload, headers={"content-type": "text/event-stream"}
+        )
+
+    oracle = make_oracle(handler)
+    messages = [{"role": "user", "content": "go"}]
+    items = [item async for item in oracle.stream_response(messages)]
+    final = items[-1]
+    assert not [item for item in items[:-1] if not isinstance(item, str)]
+    assert final.text == ""
+    assert len(final.spell_calls) == 1
+    call = final.spell_calls[0]
+    assert call.spell == "scry"
+    assert call.arguments == {"topic": "door"}
+    assert call.call_id == "call_abc"
+
+
+async def test_stream_response_streams_text_then_final():
+    body = "\n".join(
+        [
+            'data: {"choices":[{"delta":{"content":"the "}}]}',
+            "",
+            'data: {"choices":[{"delta":{"content":"door"}}]}',
+            "",
+            "data: [DONE]",
+            "",
+        ]
+    )
+
+    def handler(request):
+        return httpx.Response(
+            200, content=body, headers={"content-type": "text/event-stream"}
+        )
+
+    oracle = make_oracle(handler)
+    messages = [{"role": "user", "content": "?"}]
+    items = [item async for item in oracle.stream_response(messages)]
+    assert items[:-1] == ["the ", "door"]
+    assert items[-1].text == "the door" and items[-1].spell_calls == []

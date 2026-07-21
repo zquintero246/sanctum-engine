@@ -85,10 +85,15 @@ ritual.add_sigil("scryer", circle(
 ))
 ```
 
-Each activation is a fresh inner Invocation (inner Seals do not resume
-across outer supersteps — attach a Codex to the *outer* Rite for
-persistence), and an inner `interrupt()` surfaces as a Circle failure
-rather than an outer interrupt.
+When the inner Rite has a Codex, the Circle derives a stable inner
+Invocation id (`"<outer id>:<name>"`) via the injected `invocation`
+context: an inner `interrupt()` propagates outward as an Interrupt
+(tagged `"<name>:<inner sigil>"`), and the next activation after the
+outer resumption **resumes the paused inner Invocation from its own
+Seal** — inner progress survives; `resume_map` optionally projects outer
+state into the inner resumption's updates. Completed inner runs always
+start fresh, so Circles inside cycles stay correct. Without a Codex,
+each activation is a fresh inner Invocation.
 
 ## Scatter
 

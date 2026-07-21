@@ -148,6 +148,29 @@ def parse_chat_completion(data: Mapping[str, Any]) -> OracleResponse:
     )
 
 
+def parse_sse_delta(line: str) -> Mapping[str, Any] | None:
+    """Extract the first choice's full delta object from one SSE line.
+
+    Unlike ``parse_sse_line`` (content only), this returns the raw delta
+    mapping so callers can also accumulate ``tool_calls`` fragments.
+    Returns None for non-data lines, ``[DONE]``, and garbled payloads.
+    """
+    line = line.strip()
+    if not line.startswith("data:"):
+        return None
+    data = line[len("data:") :].strip()
+    if not data or data == "[DONE]":
+        return None
+    try:
+        chunk = json.loads(data)
+    except ValueError:
+        return None
+    choices = chunk.get("choices") or []
+    if not choices:
+        return None
+    return choices[0].get("delta") or None
+
+
 def parse_sse_line(line: str) -> str | None:
     """Extract the content delta from one SSE line.
 
@@ -244,6 +267,81 @@ class OpenAICompatibleOracle(Oracle):
             arcana=self.arcana,
         )
         return parse_chat_completion(response.json())
+
+    async def stream_response(
+        self,
+        messages: Sequence[Mapping[str, Any]],
+        spells: Sequence[Mapping[str, Any]] | None = None,
+    ) -> AsyncIterator[str | OracleResponse]:
+        """Stream content chunks, then yield the complete OracleResponse.
+
+        The tool-aware streaming capability: text deltas are yielded as
+        they arrive (str), ``tool_calls`` fragments are accumulated by
+        index (arguments concatenated, then defensively parsed), and the
+        final item is always an OracleResponse carrying the full text and
+        any SpellCalls — so a ReAct loop can stream the answer live and
+        still cast tools. Raises the same OracleError subclasses as
+        ``generate``.
+        """
+        payload = build_payload(
+            self.arcana, messages, spells, stream=True, extra_body=self._extra_body
+        )
+        text_parts: list[str] = []
+        fragments: dict[int, dict[str, str]] = {}
+        try:
+            async with self._client() as client, client.stream(
+                "POST", "/chat/completions", json=payload
+            ) as response:
+                if response.status_code >= 400:
+                    body = (await response.aread()).decode(
+                        "utf-8", errors="replace"
+                    )
+                    raise_for_status(
+                        response.status_code,
+                        body,
+                        base_url=self._base_url,
+                        arcana=self.arcana,
+                    )
+                async for line in response.aiter_lines():
+                    delta = parse_sse_delta(line)
+                    if delta is None:
+                        continue
+                    content = delta.get("content")
+                    if content:
+                        text_parts.append(content)
+                        yield content
+                    for call in delta.get("tool_calls") or []:
+                        slot = fragments.setdefault(
+                            call.get("index", 0),
+                            {"id": "", "name": "", "arguments": ""},
+                        )
+                        if call.get("id"):
+                            slot["id"] = call["id"]
+                        function = call.get("function") or {}
+                        if function.get("name"):
+                            slot["name"] += function["name"]
+                        if function.get("arguments"):
+                            slot["arguments"] += function["arguments"]
+        except Exception as exc:
+            mapped = map_transport_error(
+                exc, base_url=self._base_url, timeout=self._timeout
+            )
+            if mapped is not None:
+                raise mapped from exc
+            raise
+        spell_calls: list[SpellCall] = []
+        for index in sorted(fragments):
+            slot = fragments[index]
+            kwargs: dict[str, Any] = {
+                "spell": slot["name"],
+                "arguments": parse_arguments(slot["arguments"] or "{}"),
+            }
+            if slot["id"]:
+                kwargs["call_id"] = slot["id"]
+            spell_calls.append(SpellCall(**kwargs))
+        yield OracleResponse(
+            text="".join(text_parts), spell_calls=spell_calls, usage={}
+        )
 
     async def stream_generate(
         self,

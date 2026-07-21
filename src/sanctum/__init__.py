@@ -22,6 +22,7 @@ from sanctum.ritual import (
     END,
     START,
     Interrupt,
+    InvocationContext,
     RecursionLimitError,
     Rite,
     Ritual,
@@ -36,7 +37,7 @@ from sanctum.ritual import (
 )
 from sanctum.wards import Ward, WardRejection
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "END",
@@ -46,6 +47,7 @@ __all__ = [
     "Codex",
     "Conduit",
     "Interrupt",
+    "InvocationContext",
     "Oracle",
     "RecursionLimitError",
     "Rite",

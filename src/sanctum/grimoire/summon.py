@@ -32,7 +32,7 @@ from sanctum.grimoire.core import Tome
 from sanctum.grimoire.errors import SpellCallParseError, SpellExecutionError
 from sanctum.grimoire.repair import repair_spell_call
 from sanctum.omens import SpellCallRejected, SpellCallRepaired
-from sanctum.oracle import Oracle, SpellCall
+from sanctum.oracle import Oracle, OracleResponse, SpellCall
 from sanctum.oracle.robust import PromptedSpellCalling
 from sanctum.ritual import DEFAULT_RECURSION_LIMIT, END, Rite, Ritual
 from sanctum.ritual.scheduler import WriterFn
@@ -98,9 +98,26 @@ def summon(
 
     spell_schemas = tome.schemas() if tome is not None else None
 
-    async def consult_oracle(aether: Aether) -> Aether:
+    async def consult_oracle(aether: Aether, writer: WriterFn) -> Aether:
         transcript = [{"role": "system", "content": role}, *aether["messages"]]
-        response = await oracle.generate(transcript, spells=spell_schemas)
+        stream = getattr(oracle, "stream_response", None)
+        if stream is not None:
+            # Tool-aware streaming: text chunks flow out live through the
+            # writer (TokenEmitted Omens) while tool calls accumulate; the
+            # final item is always the complete OracleResponse.
+            response: OracleResponse | None = None
+            async for item in stream(transcript, spells=spell_schemas):
+                if isinstance(item, OracleResponse):
+                    response = item
+                else:
+                    await writer(item)
+            if response is None:
+                raise RuntimeError(
+                    f"{type(oracle).__name__}.stream_response ended without "
+                    "a final OracleResponse."
+                )
+        else:
+            response = await oracle.generate(transcript, spells=spell_schemas)
         message: dict[str, Any] = {"role": "assistant", "content": response.text}
         if response.usage:
             message["usage"] = dict(response.usage)

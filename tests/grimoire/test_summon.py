@@ -142,3 +142,24 @@ async def test_spell_request_without_tome_becomes_error_message() -> None:
     assert messages[2]["error"] is True
     assert "without a Tome" in messages[2]["content"]
     assert messages[-1]["content"] == "No Spells here; answering directly."
+
+
+async def test_summon_streams_final_answer_tokens():
+    from sanctum.omens import TokenEmitted
+
+    oracle = ScriptedOracle(script=["seven wax seals"])
+    entity = summon(oracle, role="You are a scryer.")
+    tokens: list[str] = []
+    order: list[str] = []
+    async for omen in entity.astream(
+        {"messages": [{"role": "user", "content": "count the seals"}]},
+        mode={"tokens", "updates"},
+    ):
+        if isinstance(omen, TokenEmitted):
+            tokens.append(omen.token)
+            order.append("token")
+        else:
+            order.append("update")
+    # The answer streamed out live, before the Sigil's completion event.
+    assert "".join(tokens) == "seven wax seals"
+    assert order.index("token") < order.index("update")

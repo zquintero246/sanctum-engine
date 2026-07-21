@@ -66,3 +66,20 @@ class ScriptedOracle(Oracle):
         words = response.text.split(" ")
         for index, word in enumerate(words):
             yield word if index == len(words) - 1 else word + " "
+
+    async def stream_response(
+        self,
+        messages: Sequence[Mapping[str, Any]],
+        spells: Sequence[Mapping[str, Any]] | None = None,
+    ) -> AsyncIterator[str | OracleResponse]:
+        """Yield the next response's text word by word, then the response.
+
+        Mirrors the tool-aware streaming capability of the production
+        adapters so streaming code paths stay testable without a model.
+        """
+        response = await self.generate(messages, spells)
+        if response.text:
+            words = response.text.split(" ")
+            for index, word in enumerate(words):
+                yield word if index == len(words) - 1 else word + " "
+        yield response

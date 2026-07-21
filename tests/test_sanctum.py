@@ -22,7 +22,7 @@ SUBMODULES = [
 
 
 def test_version() -> None:
-    assert sanctum.__version__ == "0.3.0"
+    assert sanctum.__version__ == "0.4.0"
 
 
 @pytest.mark.parametrize("name", SUBMODULES)

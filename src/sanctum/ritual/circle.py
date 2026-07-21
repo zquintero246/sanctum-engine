@@ -32,6 +32,7 @@ from typing import Any
 from sanctum.aether import Aether
 from sanctum.omens import CircleEchoed, RiteManifested
 from sanctum.ritual.errors import SigilExecutionError
+from sanctum.ritual.interrupt import Interrupt
 
 InputMap = Mapping[str, str] | Callable[[Aether], Aether] | None
 """How the outer Aether becomes the inner input: None (pass everything),
@@ -49,6 +50,7 @@ def circle(
     name: str = "circle",
     input_map: InputMap = None,
     output_map: OutputMap = None,
+    resume_map: InputMap = None,
 ) -> Callable[..., Any]:
     """Seal a compiled Rite into a Sigil function (subgraph as node).
 
@@ -58,6 +60,21 @@ def circle(
     returns the inner final Aether projected through `output_map` as its
     delta. Inner failures propagate, so the outer Sigil's SigilPolicy
     (retries, timeout, on_error) governs the whole Circle.
+
+    **Persistence.** When the inner Rite was compiled with a Codex, the
+    Circle derives a stable inner Invocation id —
+    ``"<outer invocation_id>:<name>"`` (via the injected ``invocation``
+    context) — so inner Seals accumulate under one identity. An inner
+    ``interrupt()`` propagates outward as an Interrupt (tagged
+    ``"<name>:<inner sigil>"``); when the outer Invocation is resumed and
+    re-activates this Sigil, the Circle notices the paused inner
+    Invocation and **resumes it from its own Seal** instead of starting
+    over — inner progress survives. `resume_map` optionally projects the
+    outer Aether into the inner resumption's ``updates`` (dict
+    ``{inner: outer}`` or callable); leave it None to resume untouched.
+    A previously *completed* inner Invocation is never resumed: each
+    fresh activation starts a fresh inner run under the same identity
+    (history appends).
     """
 
     def project_in(aether: Aether) -> Aether:
@@ -82,16 +99,53 @@ def circle(
             if inner in final
         }
 
-    async def perform(aether: Aether, writer=None) -> Aether:
+    def project_resume(aether: Aether) -> Aether | None:
+        if resume_map is None:
+            return None
+        if callable(resume_map):
+            return dict(resume_map(dict(aether)))
+        return {
+            inner: aether[outer]
+            for inner, outer in resume_map.items()
+            if outer in aether
+        }
+
+    async def perform(aether: Aether, writer=None, invocation=None) -> Aether:
+        inner_codex = getattr(rite, "_codex", None)
+        stream = None
+        if inner_codex is not None and invocation is not None:
+            inner_id = f"{invocation.invocation_id}:{name}"
+            last = await inner_codex.get(inner_id)
+            if last is not None and last.metadata.get("interrupted"):
+                # The inner Invocation is paused mid-rite: resume it from
+                # its own Seal instead of starting over.
+                stream = rite.astream(
+                    None,
+                    invocation_id=inner_id,
+                    updates=project_resume(aether),
+                    mode={"omens", "tokens"},
+                )
+            else:
+                stream = rite.astream(
+                    project_in(aether),
+                    invocation_id=inner_id,
+                    mode={"omens", "tokens"},
+                )
+        if stream is None:
+            stream = rite.astream(project_in(aether), mode={"omens", "tokens"})
+
         final: Aether | None = None
         try:
-            async for omen in rite.astream(
-                project_in(aether), mode={"omens", "tokens"}
-            ):
+            async for omen in stream:
                 if isinstance(omen, RiteManifested):
                     final = omen.aether
                 if writer is not None:
                     await writer(CircleEchoed(circle=name, omen=omen))
+        except Interrupt as pause:
+            # Tag the pause with the Circle's path so the outer Seal
+            # names where the rite is truly waiting, then let it climb.
+            pause.sigil = f"{name}:{pause.sigil}" if pause.sigil else name
+            raise
         except SigilExecutionError as failure:
             # Re-raise as a plain failure of THIS Sigil so the outer
             # scheduler attributes it to the Circle and the outer

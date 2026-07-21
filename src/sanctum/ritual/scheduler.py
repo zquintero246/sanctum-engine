@@ -49,6 +49,7 @@ import asyncio
 import inspect
 import time
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from sanctum.aether import Aether, AetherSchema
@@ -105,17 +106,32 @@ async def _discard(omen: Omen) -> None:
     """Swallow Omens when no stream is attached."""
 
 
-def _accepts_writer(fn: SigilFn) -> bool:
-    """Detect whether a Sigil declares the optional `writer` parameter.
+def _accepts_parameter(fn: SigilFn, parameter: str) -> bool:
+    """Detect whether a Sigil declares an optional injected parameter.
 
     Inspected once at construction; callables whose signature cannot be
-    introspected are treated as writer-less.
+    introspected are treated as not accepting it.
     """
     try:
         parameters = inspect.signature(fn).parameters
     except (TypeError, ValueError):
         return False
-    return "writer" in parameters
+    return parameter in parameters
+
+
+@dataclass(frozen=True, slots=True)
+class InvocationContext:
+    """The identity of the running Invocation, offered to Sigils that ask.
+
+    A Sigil whose signature declares an ``invocation`` parameter receives
+    one of these per activation: `invocation_id` names the session and
+    `superstep` the 1-based step being executed. This is how composition
+    helpers (e.g. ``circle``) derive stable child identities — an inner
+    Invocation id that survives across activations and resumptions.
+    """
+
+    invocation_id: str
+    superstep: int
 
 RouterFn = Callable[[Aether], str | Awaitable[str]]
 """A conditional edge's router: takes the full Aether, returns the name of
@@ -163,7 +179,14 @@ class Scheduler:
             name: index for index, name in enumerate(self._sigils)
         }
         self._writer_sigils: set[str] = {
-            name for name, fn in self._sigils.items() if _accepts_writer(fn)
+            name
+            for name, fn in self._sigils.items()
+            if _accepts_parameter(fn, "writer")
+        }
+        self._invocation_sigils: set[str] = {
+            name
+            for name, fn in self._sigils.items()
+            if _accepts_parameter(fn, "invocation")
         }
         # join="all" Sigils and the static predecessors each one waits for.
         self._join_required: dict[str, frozenset[str]] = {
@@ -389,7 +412,7 @@ class Scheduler:
             while True:
                 try:
                     result = await self._attempt_sigil(
-                        name, aether, superstep, emit, policy
+                        name, aether, superstep, emit, policy, invocation_id
                     )
                 except Interrupt as pause:
                     if pause.sigil is None:
@@ -515,6 +538,7 @@ class Scheduler:
         superstep: int,
         emit: EmitFn,
         policy: SigilPolicy,
+        invocation_id: str,
     ) -> Any:
         """Run one attempt of a Sigil, bounded by its policy's timeout.
 
@@ -524,10 +548,14 @@ class Scheduler:
         SigilTimeoutError with the configured time in the message.
         """
         if policy.timeout is None:
-            return await self._invoke_sigil(name, aether, superstep, emit)
+            return await self._invoke_sigil(
+                name, aether, superstep, emit, invocation_id
+            )
         try:
             async with asyncio.timeout(policy.timeout):
-                return await self._invoke_sigil(name, aether, superstep, emit)
+                return await self._invoke_sigil(
+                    name, aether, superstep, emit, invocation_id
+                )
         except TimeoutError:
             raise SigilTimeoutError(
                 f"Sigil '{name}' exceeded its timeout of {policy.timeout}s "
@@ -538,9 +566,15 @@ class Scheduler:
             ) from None
 
     async def _invoke_sigil(
-        self, name: str, aether: Aether, superstep: int, emit: EmitFn
+        self,
+        name: str,
+        aether: Aether,
+        superstep: int,
+        emit: EmitFn,
+        invocation_id: str,
     ) -> Any:
-        """Call the Sigil — writer injected when declared — and await it."""
+        """Call the Sigil — writer/invocation injected when declared."""
+        kwargs: dict[str, Any] = {}
         if name in self._writer_sigils:
 
             async def writer(token: Any) -> None:
@@ -551,9 +585,12 @@ class Scheduler:
                     TokenEmitted(sigil=name, superstep=superstep, token=token)
                 )
 
-            result = self._sigils[name](dict(aether), writer=writer)
-        else:
-            result = self._sigils[name](dict(aether))
+            kwargs["writer"] = writer
+        if name in self._invocation_sigils:
+            kwargs["invocation"] = InvocationContext(
+                invocation_id=invocation_id, superstep=superstep
+            )
+        result = self._sigils[name](dict(aether), **kwargs)
         if inspect.isawaitable(result):
             result = await result
         return result

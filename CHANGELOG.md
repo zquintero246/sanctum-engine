@@ -5,6 +5,28 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [Semantic Versioning](https://semver.org/) (see
 CONTRIBUTING.md for what counts as a breaking change pre-1.0).
 
+## [0.4.0] — 2026-07-21
+
+### Added
+- Human-in-the-loop through Circles: when the inner Rite has a Codex,
+  a Circle derives a stable inner Invocation id from the new injected
+  `invocation` context, propagates inner `interrupt()` outward (pauses
+  tagged `"<circle>:<sigil>"`), and — on the next activation after the
+  outer Invocation resumes — **resumes the paused inner Invocation from
+  its own Seal** instead of starting over (`resume_map` optionally
+  projects outer state into the inner resumption). Completed inner runs
+  always start fresh, so Circles inside cycles stay correct.
+- Injected `invocation` parameter: a Sigil whose signature declares
+  `invocation` receives an `InvocationContext(invocation_id, superstep)`
+  per activation (exported from `sanctum` and `sanctum.ritual`).
+- Tool-aware streaming: `stream_response()` on `OpenAICompatibleOracle`
+  (SSE content deltas yielded live, `tool_calls` fragments accumulated
+  and defensively parsed, final item a complete `OracleResponse`) and on
+  `ScriptedOracle` (word chunks, deterministic). `summon()` now streams
+  the Oracle's answer token-by-token through the Sigil `writer` when the
+  Oracle offers `stream_response` — live tokens from inside the ReAct
+  loop, spell calls intact.
+
 ## [0.3.0] — 2026-07-21
 
 ### Fixed

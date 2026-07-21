@@ -137,3 +137,107 @@ async def test_inner_failure_surfaces_as_outer_sigil_error() -> None:
     # the message still names the inner culprit.
     assert caught.value.sigil == "sub"
     assert "inner Sigil 'explode'" in str(caught.value.__cause__)
+
+
+async def test_sigil_receives_invocation_context() -> None:
+    from sanctum import InvocationContext
+
+    seen: list[Any] = []
+
+    def observer(aether: Aether, invocation=None) -> Aether:
+        seen.append(invocation)
+        return {}
+
+    ritual = Ritual()
+    ritual.add_sigil("observer", observer)
+    ritual.set_entry_point("observer")
+    ritual.add_edge("observer", END)
+    await ritual.compile().ainvoke({}, invocation_id="inv-ctx")
+
+    assert seen and isinstance(seen[0], InvocationContext)
+    assert seen[0].invocation_id == "inv-ctx"
+    assert seen[0].superstep == 1
+
+
+async def test_inner_interrupt_resumes_inside_the_circle() -> None:
+    from sanctum import Interrupt, interrupt
+    from sanctum.codex import MemoryCodex
+
+    prelude_runs: list[str] = []
+
+    def prelude(aether: Aether) -> Aether:
+        prelude_runs.append("ran")
+        return {"prepared": True}
+
+    def gate(aether: Aether) -> Aether:
+        if aether.get("approved"):
+            return {"verdict": "blessed"}
+        interrupt("the gate awaits approval")
+
+    inner = Ritual()
+    inner.add_sigil("prelude", prelude)
+    inner.add_sigil("gate", gate)
+    inner.set_entry_point("prelude")
+    inner.add_edge("prelude", "gate")
+    inner.add_edge("gate", END)
+    inner_rite = inner.compile(codex=MemoryCodex())
+
+    outer = Ritual()
+    outer.add_sigil(
+        "chamber",
+        circle(
+            inner_rite,
+            name="chamber",
+            output_map={"verdict": "verdict"},
+            resume_map={"approved": "approved"},
+        ),
+    )
+    outer.set_entry_point("chamber")
+    outer.add_edge("chamber", END)
+    outer_rite = outer.compile(codex=MemoryCodex())
+
+    with pytest.raises(Interrupt) as caught:
+        await outer_rite.ainvoke({}, invocation_id="outer-1")
+    # The pause names the full path into the circle.
+    assert caught.value.sigil == "chamber:gate"
+
+    result = await outer_rite.ainvoke(
+        invocation_id="outer-1", updates={"approved": True}
+    )
+    assert result["verdict"] == "blessed"
+    # The inner Invocation RESUMED: its prelude did not run a second time.
+    assert prelude_runs == ["ran"]
+
+
+async def test_completed_inner_invocations_start_fresh_next_activation() -> None:
+    from sanctum.codex import MemoryCodex
+
+    runs: list[int] = []
+
+    def work(aether: Aether) -> Aether:
+        runs.append(aether["round"])
+        return {"echo": aether["round"]}
+
+    inner = Ritual()
+    inner.add_sigil("work", work)
+    inner.set_entry_point("work")
+    inner.add_edge("work", END)
+    inner_rite = inner.compile(codex=MemoryCodex())
+
+    outer = Ritual()
+    outer.add_sigil("tick", lambda aether: {"round": aether.get("round", 0) + 1})
+    outer.add_sigil(
+        "sub",
+        circle(inner_rite, name="sub", input_map={"round": "round"},
+               output_map={"echo": "echo"}),
+    )
+    outer.set_entry_point("tick")
+    outer.add_edge("tick", "sub")
+    outer.add_conditional_edge(
+        "sub", lambda aether: END if aether["round"] >= 2 else "tick"
+    )
+    result = await outer.compile().ainvoke({}, invocation_id="outer-loop")
+
+    # Two activations, each a FRESH inner run (no stale resumption).
+    assert runs == [1, 2]
+    assert result["echo"] == 2

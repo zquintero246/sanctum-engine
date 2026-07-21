@@ -21,7 +21,12 @@ from sanctum.ritual.errors import (
 from sanctum.ritual.interrupt import Interrupt, interrupt
 from sanctum.ritual.policies import BackoffFn, SigilPolicy, exponential_backoff
 from sanctum.ritual.scatter import scatter
-from sanctum.ritual.scheduler import RouterFn, Scheduler, SigilFn
+from sanctum.ritual.scheduler import (
+    InvocationContext,
+    RouterFn,
+    Scheduler,
+    SigilFn,
+)
 
 __all__ = [
     "DEFAULT_RECURSION_LIMIT",
@@ -30,6 +35,7 @@ __all__ = [
     "Aether",
     "BackoffFn",
     "Interrupt",
+    "InvocationContext",
     "RecursionLimitError",
     "Rite",
     "Ritual",
