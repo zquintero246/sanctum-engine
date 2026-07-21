@@ -4,286 +4,339 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Sanctum — local-first orchestration for AI agents</title>
-<meta name="description" content="A minimal, local-first orchestration engine for AI agents: cyclic state graphs run by supersteps, built to work with local models. Zero-dependency core.">
+<meta name="description" content="A minimal, local-first orchestration engine for cyclic state graphs. Summon agents, bind tools, run everything on your own machine.">
 <style>
-  :root{
-    --bg:#17141f; --bg2:#1d1928; --bg3:#241f31;
-    --ink:#d8d3e0; --ink-dim:#8f88a0; --ink-faint:#5c5570;
-    --gold:#cbb47a; --gold-soft:#a8945f;
-    --line:#2e2840; --green:#6d8f6a; --red:#a06060;
-    --serif:Georgia,'Times New Roman',serif;
-    --sans:system-ui,'Segoe UI',Roboto,sans-serif;
-    --mono:ui-monospace,'Cascadia Code',Consolas,monospace;
-  }
-  *{margin:0;padding:0;box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6}
-  a{color:var(--gold);text-decoration:none}
-  a:hover{text-decoration:underline}
-  .wrap{max-width:1060px;margin:0 auto;padding:0 24px}
+:root{
+  --bg:#050505; --bg2:#0a0a09; --bg3:#121210; --panel:#0a0908;
+  --ink:#cfc8b8; --dim:#8a8377; --faint:#5d574d;
+  --blood:#d43b2a; --blood-dim:#7e211a; --blood-glow:rgba(212,59,42,.5);
+  --bone:#cbc4b2; --bone-dim:#665f52;
+  --phos:#ddd6c6; --amber:#c99b3f;
+  --line:#1e1c18; --line2:#2c2924;
+  --mono:'Cascadia Code','Cascadia Mono',Consolas,'JetBrains Mono','Fira Code',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);font-family:var(--mono);
+  font-size:15px;line-height:1.7;text-rendering:optimizeLegibility}
+::selection{background:var(--blood-dim);color:var(--ink)}
+a{color:var(--bone);text-decoration:none;border-bottom:1px solid var(--bone-dim)}
+a:hover{color:#fff;border-color:var(--blood)}
+code,pre{font-family:var(--mono)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 24px}
 
-  nav{position:sticky;top:0;z-index:10;background:rgba(23,20,31,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
-  nav .wrap{display:flex;align-items:center;gap:28px;height:58px}
-  .brand{font-family:var(--serif);font-size:1.25rem;letter-spacing:.14em;color:var(--ink)}
-  .brand b{color:var(--gold);font-weight:normal}
-  nav .links{margin-left:auto;display:flex;gap:22px;font-size:.9rem}
-  nav .links a{color:var(--ink-dim)}
-  nav .links a:hover{color:var(--gold);text-decoration:none}
+/* CRT scanlines + vignette */
+#scanlines{position:fixed;inset:0;pointer-events:none;z-index:999;
+  background:
+    repeating-linear-gradient(0deg,rgba(0,0,0,.14) 0 1px,transparent 1px 3px),
+    radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,.4) 100%);
+  mix-blend-mode:multiply;animation:flicker 9s infinite}
+@keyframes flicker{0%,100%{opacity:1}92%{opacity:1}93%{opacity:.84}94%{opacity:1}96%{opacity:.92}97%{opacity:1}}
 
-  header{padding:84px 0 64px;text-align:center;
-    background:radial-gradient(ellipse 720px 420px at 50% -80px,#241d38 0%,var(--bg) 70%)}
-  .sigil{margin:0 auto 26px;display:block}
-  h1{font-family:var(--serif);font-weight:normal;font-size:clamp(2.6rem,6vw,4rem);letter-spacing:.22em;margin-left:.22em}
-  .tagline{font-family:var(--serif);font-style:italic;color:var(--gold);font-size:clamp(1.05rem,2.2vw,1.3rem);margin:14px auto 0;max-width:640px}
-  .sub{color:var(--ink-dim);max-width:660px;margin:18px auto 0;font-size:1.02rem}
-  .cta{margin-top:34px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap;align-items:center}
-  .btn{display:inline-block;padding:11px 26px;border:1px solid var(--gold-soft);border-radius:3px;font-size:.95rem;letter-spacing:.04em}
-  .btn.primary{background:var(--gold);color:#17141f;font-weight:600}
-  .btn.primary:hover{background:#d9c48c;text-decoration:none}
-  .btn.ghost{color:var(--gold)}
-  .btn.ghost:hover{background:rgba(203,180,122,.08);text-decoration:none}
-  .pip{margin-top:26px;display:inline-block;font-family:var(--mono);font-size:.95rem;background:var(--bg3);border:1px solid var(--line);border-radius:4px;padding:10px 22px;color:var(--ink)}
-  .pip .p{color:var(--ink-faint)}
+/* glitch */
+.glitch{position:relative;display:inline-block}
+.glitch::before,.glitch::after{content:attr(data-text);position:absolute;inset:0;
+  overflow:hidden;opacity:0;pointer-events:none}
+.glitch::before{color:var(--blood);z-index:-1;animation:glitch-a 5s infinite steps(1)}
+.glitch::after{color:#8a8a8a;z-index:-2;animation:glitch-b 5s infinite steps(1)}
+@keyframes glitch-a{0%,88%,100%{opacity:0;transform:none;clip-path:none}
+  89%{opacity:.9;transform:translate(-2px,1px);clip-path:inset(10% 0 55% 0)}
+  91%{opacity:.9;transform:translate(2px,-1px);clip-path:inset(60% 0 15% 0)}93%{opacity:0}}
+@keyframes glitch-b{0%,89%,100%{opacity:0;transform:none;clip-path:none}
+  90%{opacity:.8;transform:translate(2px,0);clip-path:inset(40% 0 35% 0)}
+  92%{opacity:.8;transform:translate(-2px,1px);clip-path:inset(5% 0 80% 0)}94%{opacity:0}}
 
-  .stats{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg2)}
-  .stats .wrap{display:flex;justify-content:center;gap:0;flex-wrap:wrap}
-  .stat{padding:20px 34px;text-align:center;min-width:170px}
-  .stat b{display:block;font-family:var(--serif);font-size:1.5rem;color:var(--gold);font-weight:normal}
-  .stat span{font-size:.8rem;color:var(--ink-dim);letter-spacing:.06em;text-transform:uppercase}
+/* nav */
+nav{display:flex;align-items:center;gap:18px;padding:14px 0;
+  border-bottom:1px solid var(--line2)}
+nav .brand{letter-spacing:.14em;color:var(--ink);font-size:1rem;border:none;
+  text-shadow:0 0 12px rgba(212,59,42,.25)}
+nav .links{margin-left:auto;display:flex;gap:16px;font-size:.85rem;
+  letter-spacing:.08em;text-transform:uppercase}
+nav .links a{color:var(--dim);border:none}
+nav .links a:hover{color:var(--ink)}
 
-  section{padding:74px 0}
-  h2{font-family:var(--serif);font-weight:normal;font-size:1.9rem;margin-bottom:8px}
-  .lede{color:var(--ink-dim);max-width:640px;margin-bottom:40px}
-  .kicker{font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:10px}
+/* hero */
+#hero{display:flex;gap:44px;align-items:center;padding:72px 0 64px;
+  flex-wrap:wrap}
+#sigil{color:var(--blood);font-size:11px;line-height:1.06;user-select:none;
+  text-shadow:0 0 10px var(--blood-glow);flex-shrink:0}
+#hero .copy{flex:1;min-width:300px}
+.overline{color:var(--faint);letter-spacing:.24em;font-size:.75rem;
+  text-transform:uppercase;margin-bottom:14px}
+h1{font-size:3rem;letter-spacing:.2em;font-weight:600;color:var(--ink);
+  margin-bottom:16px}
+#hero p.lead{color:var(--dim);max-width:52ch}
+.term-line{margin-top:18px;color:var(--phos);font-size:.85rem;opacity:.9}
+.term-line::after{content:"█";animation:cursor 1.1s steps(1) infinite;margin-left:2px}
+@keyframes cursor{0%,49%{opacity:1}50%,100%{opacity:0}}
+.cta{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap}
+.btn{display:inline-block;padding:10px 22px;border:1px solid var(--line2);
+  color:var(--dim);letter-spacing:.1em;font-size:.85rem;text-transform:uppercase}
+.btn::before{content:"[ ";color:var(--faint)}
+.btn::after{content:" ]";color:var(--faint)}
+.btn:hover{color:var(--ink);border-color:var(--bone-dim);background:rgba(203,196,178,.04)}
+.btn.primary{color:var(--blood);border-color:var(--blood-dim)}
+.btn.primary::before,.btn.primary::after{color:var(--blood-dim)}
+.btn.primary:hover{color:#ff6a50;border-color:var(--blood);
+  background:rgba(212,59,42,.07);box-shadow:0 0 16px rgba(212,59,42,.25)}
+.stats{display:flex;gap:26px;margin-top:30px;flex-wrap:wrap}
+.stat b{display:block;font-size:1.3rem;color:var(--bone)}
+.stat span{color:var(--faint);font-size:.72rem;letter-spacing:.16em;
+  text-transform:uppercase}
 
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:18px}
-  .card{background:var(--bg2);border:1px solid var(--line);border-radius:5px;padding:24px 22px}
-  .card h3{font-family:var(--serif);font-weight:normal;color:var(--gold);font-size:1.12rem;margin-bottom:8px}
-  .card p{font-size:.92rem;color:var(--ink-dim)}
-  .card code{font-family:var(--mono);font-size:.84em;color:var(--ink);background:var(--bg3);padding:1px 5px;border-radius:3px}
+/* sections */
+section{padding:64px 0;border-top:1px solid var(--line)}
+section.alt{background:var(--bg2)}
+h2{font-size:1.4rem;letter-spacing:.12em;color:var(--ink);margin-bottom:8px}
+.sect-tag{color:var(--blood);font-size:.72rem;letter-spacing:.28em;
+  text-transform:uppercase;margin-bottom:10px}
+.sect-tag::before{content:"░▒▓ ";color:var(--faint)}
+section>.wrap>p{color:var(--dim);max-width:68ch}
 
-  .split{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center}
-  @media(max-width:860px){.split{grid-template-columns:1fr}}
+/* code blocks */
+pre{background:#070606;border:1px solid var(--line2);padding:18px 20px;
+  overflow-x:auto;font-size:.83rem;line-height:1.65;margin-top:22px;
+  position:relative}
+pre::before{content:"┌";position:absolute;top:-1px;left:-1px;color:var(--blood-dim)}
+pre::after{content:"┘";position:absolute;bottom:-1px;right:-1px;color:var(--blood-dim)}
+.c-k{color:var(--blood)} .c-s{color:var(--amber)} .c-c{color:var(--faint)}
+.c-f{color:var(--bone)}
+.split{display:flex;gap:40px;align-items:flex-start;flex-wrap:wrap}
+.split>div{flex:1;min-width:300px}
 
-  .term{background:#120f1a;border:1px solid var(--line);border-radius:6px;overflow:hidden;font-family:var(--mono);font-size:.83rem;line-height:1.55}
-  .term .bar{background:var(--bg3);padding:8px 14px;color:var(--ink-faint);font-size:.75rem;border-bottom:1px solid var(--line)}
-  .term pre{padding:18px 20px;overflow-x:auto;color:var(--ink)}
-  .term .c{color:var(--ink-faint)}     /* comment */
-  .term .k{color:#9d86c9}              /* keyword */
-  .term .s{color:var(--gold)}          /* string */
-  .term .g{color:var(--green)}         /* good */
-  .term .r{color:var(--red)}           /* bad */
+/* feature grid */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:1px;background:var(--line);border:1px solid var(--line);margin-top:28px}
+.cell{background:var(--panel);padding:20px 22px}
+.cell h3{color:var(--bone);font-size:.95rem;letter-spacing:.06em;margin-bottom:6px}
+.cell h3 .g{color:var(--blood);margin-right:8px}
+.cell p{color:var(--dim);font-size:.83rem}
 
-  .imgframe{border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--bg2)}
-  .imgframe img{display:block;width:100%;height:auto}
+/* comparison table */
+table{width:100%;border-collapse:collapse;margin-top:26px;font-size:.85rem}
+th,td{border:1px solid var(--line2);padding:9px 13px;text-align:left}
+th{color:var(--faint);letter-spacing:.14em;font-size:.72rem;
+  text-transform:uppercase;background:var(--bg2)}
+td:first-child{color:var(--bone)}
+td{color:var(--dim)}
+td .yes{color:var(--phos)} td .no{color:var(--blood)}
 
-  table{width:100%;border-collapse:collapse;font-size:.92rem}
-  th,td{padding:12px 16px;text-align:left;border-bottom:1px solid var(--line)}
-  th{font-family:var(--serif);font-weight:normal;color:var(--gold);letter-spacing:.04em}
-  td:first-child{color:var(--ink-dim)}
-  .yes{color:var(--green)} .no{color:var(--red)} .mid{color:var(--ink-dim)}
-  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:5px;background:var(--bg2)}
+/* ecosystem cards */
+.eco{display:flex;gap:22px;margin-top:28px;flex-wrap:wrap}
+.eco .card{flex:1;min-width:280px;border:1px solid var(--line2);
+  background:var(--panel);padding:22px 24px;position:relative}
+.eco .card::before{content:"⌜";position:absolute;top:2px;left:6px;color:var(--bone-dim)}
+.eco .card::after{content:"⌟";position:absolute;bottom:2px;right:6px;color:var(--bone-dim)}
+.eco h3{color:var(--ink);letter-spacing:.1em;margin-bottom:8px}
+.eco h3 .g{color:var(--blood)}
+.eco p{color:var(--dim);font-size:.85rem}
 
-  footer{border-top:1px solid var(--line);padding:38px 0 46px;color:var(--ink-faint);font-size:.88rem}
-  footer .wrap{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}
-  footer a{color:var(--ink-dim)}
-  .alt{background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+/* footer */
+footer{border-top:1px solid var(--line2);padding:34px 0 44px;
+  color:var(--faint);font-size:.8rem}
+footer .wrap{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+footer .skull{color:var(--bone-dim);animation:skullflicker 4s steps(1) infinite}
+@keyframes skullflicker{0%,100%{opacity:.85}46%{opacity:.85}48%{opacity:.3}
+  50%{opacity:.85}81%{opacity:.85}83%{opacity:.45}85%{opacity:.85}}
+footer .links{margin-left:auto;display:flex;gap:14px}
+footer a{color:var(--dim);border:none}
+@media (max-width:760px){#sigil{display:none}h1{font-size:2.2rem}}
 </style>
 </head>
 <body>
+<div id="scanlines" aria-hidden="true"></div>
 
-<nav>
-  <div class="wrap">
-    <span class="brand">SANC<b>TUM</b></span>
+<header class="wrap">
+  <nav>
+    <a class="brand glitch" data-text="SANCTVM" href="./">SANCTVM</a>
     <div class="links">
       <a href="getting-started/">Docs</a>
       <a href="comparison/">Comparison</a>
       <a href="https://github.com/zquintero246/sanctum-engine">GitHub</a>
       <a href="https://pypi.org/project/sanctum-engine/">PyPI</a>
     </div>
-  </div>
-</nav>
-
-<header>
-  <div class="wrap">
-    <!-- the sigil: three concentric forms, drawn inline -->
-    <svg class="sigil" width="74" height="74" viewBox="0 0 74 74" aria-hidden="true">
-      <circle cx="37" cy="37" r="34" fill="none" stroke="#cbb47a" stroke-width="1" opacity=".8"/>
-      <circle cx="37" cy="37" r="26" fill="none" stroke="#cbb47a" stroke-width=".6" opacity=".45"/>
-      <polygon points="37,15 56,48 18,48" fill="none" stroke="#cbb47a" stroke-width="1" opacity=".85"/>
-      <circle cx="37" cy="40" r="4" fill="#cbb47a" opacity=".9"/>
-    </svg>
-    <h1>SANCTUM</h1>
-    <p class="tagline">Where agents are summoned, bound, and set to work.</p>
-    <p class="sub">A minimal, local-first orchestration engine for AI agents:
-      <strong>cyclic state graphs</strong> executed by supersteps (Pregel/BSP),
-      built from the ground up for models that run on <em>your</em> machine.</p>
-    <div class="cta">
-      <a class="btn primary" href="getting-started/">Get started</a>
-      <a class="btn ghost" href="https://github.com/zquintero246/sanctum-engine">View source</a>
-    </div>
-    <div><code class="pip"><span class="p">$</span> pip install sanctum-engine</code></div>
-  </div>
+  </nav>
 </header>
 
-<div class="stats">
-  <div class="wrap">
-    <div class="stat"><b>0</b><span>core dependencies</span></div>
-    <div class="stat"><b>~60 µs</b><span>superstep overhead</span></div>
-    <div class="stat"><b>120+</b><span>tests, no GPU needed</span></div>
-    <div class="stat"><b>MIT</b><span>license</span></div>
-  </div>
+<div class="wrap">
+  <section id="hero" style="border-top:none">
+    <pre id="sigil" aria-hidden="true"></pre>
+    <div class="copy">
+      <div class="overline">// local-first orchestration for AI agents</div>
+      <h1 class="glitch" data-text="SANCTUM">SANCTUM</h1>
+      <p class="lead">Draw the circle. Bind the sigils. Invoke — a minimal
+      engine for <b style="color:var(--bone)">cyclic state graphs</b> run by
+      supersteps, built to work with the models on <em>your</em> machine.
+      Pure Python standard library at the core. No cloud, no accounts,
+      no telemetry.</p>
+      <div class="term-line">$ pip install sanctum-engine</div>
+      <div class="cta">
+        <a class="btn primary" href="getting-started/">Get started</a>
+        <a class="btn" href="https://github.com/zquintero246/sanctum-engine">View source</a>
+      </div>
+      <div class="stats">
+        <div class="stat"><b>0</b><span>core dependencies</span></div>
+        <div class="stat"><b>~60µs</b><span>per superstep</span></div>
+        <div class="stat"><b>140</b><span>tests, no models needed</span></div>
+        <div class="stat"><b>MIT</b><span>license</span></div>
+      </div>
+    </div>
+  </section>
 </div>
 
-<section id="agent">
+<section class="alt" id="agent">
   <div class="wrap split">
     <div>
-      <div class="kicker">The whole loop, in one call</div>
+      <div class="sect-tag">The model</div>
       <h2>An agent is a cycle, not a chain</h2>
-      <p class="lede" style="margin-bottom:18px">Sanctum executes <em>cyclic</em> state
-        graphs — think&nbsp;→&nbsp;act&nbsp;→&nbsp;observe&nbsp;→&nbsp;think — with
-        parallel nodes, deterministic state merging, and a superstep budget so no
-        loop runs away. <code style="font-family:var(--mono);font-size:.9em">summon()</code>
-        assembles the full ReAct loop from the same public API you build on.</p>
-      <p class="lede" style="margin-bottom:0">Tools are plain typed functions; their
-        JSON schemas are inferred. Point it at any local backend and invoke.</p>
+      <p>Sanctum executes a <b style="color:var(--bone)">cyclic state
+      graph</b> — not a DAG. Every superstep runs the active Sigils
+      (nodes) in parallel over a shared Aether (state), merges their
+      partial deltas through per-channel reducers, then lets conditional
+      edges decide what wakes next. Think → act → observe → think again:
+      the loop <em>is</em> the agent, bounded by a recursion limit and
+      checkpointed at every step.</p>
+      <p style="margin-top:12px">Deterministic by construction: deltas
+      apply in Sigil insertion order, so parallel runs resolve
+      identically, every time.</p>
     </div>
-    <div class="term">
-      <div class="bar">agent.py</div>
-      <pre><span class="k">from</span> sanctum <span class="k">import</span> Tome, spell, summon
-<span class="k">from</span> sanctum.oracle.openai_compat <span class="k">import</span> OpenAICompatibleOracle
+    <div>
+<pre><span class="c-k">from</span> sanctum <span class="c-k">import</span> END, Ritual
 
-<span class="k">@spell</span>
-<span class="k">def</span> add(a: <span class="k">float</span>, b: <span class="k">float</span>) -&gt; <span class="k">float</span>:
-    <span class="s">"""Add two numbers."""</span>
-    <span class="k">return</span> a + b
+ritual = Ritual()
+ritual.add_sigil(<span class="c-s">"think"</span>, think)
+ritual.add_sigil(<span class="c-s">"act"</span>, act)
+ritual.set_entry_point(<span class="c-s">"think"</span>)
+ritual.add_edge(<span class="c-s">"think"</span>, <span class="c-s">"act"</span>)
+ritual.add_conditional_edge(<span class="c-s">"act"</span>,
+    <span class="c-k">lambda</span> aether: END <span class="c-k">if</span> aether[<span class="c-s">"done"</span>] <span class="c-k">else</span> <span class="c-s">"think"</span>)
+
+rite = ritual.compile()          <span class="c-c"># validated, sealed</span>
+rite.invoke({<span class="c-s">"task"</span>: <span class="c-s">"..."</span>})     <span class="c-c"># the loop unfolds</span></pre>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="sect-tag">The machinery</div>
+    <h2>Small surface, serious machinery</h2>
+    <p>One graph builder, one executable plan, and everything an agentic
+    runtime actually needs — nothing it doesn't.</p>
+    <div class="grid">
+      <div class="cell"><h3><span class="g">◆</span>BSP supersteps</h3>
+        <p>Pregel-style lockstep: parallel Sigils, deterministic reducer
+        order, conditional edges evaluated against the merged state.</p></div>
+      <div class="cell"><h3><span class="g">⋈</span>Wait-all joins</h3>
+        <p><code>join="all"</code> turns a Sigil into a barrier over its
+        predecessors — uneven branches converge correctly, across
+        supersteps, surviving checkpoints.</p></div>
+      <div class="cell"><h3><span class="g">◎</span>Circles — subgraphs</h3>
+        <p>Mount a compiled Rite as a single Sigil. A summoned agent
+        becomes one node of a larger pipeline; its inner life stays
+        visible as echoed events.</p></div>
+      <div class="cell"><h3><span class="g">✳</span>Scatter — map-reduce</h3>
+        <p>Fan out over a runtime-sized list with bounded concurrency;
+        results land in item order. Dynamic parallelism without touching
+        the frontier model.</p></div>
+      <div class="cell"><h3><span class="g">☩</span>summon()</h3>
+        <p>The canonical ReAct loop — oracle → spells → oracle → END —
+        assembled entirely from public primitives. Your agent in one
+        call.</p></div>
+      <div class="cell"><h3><span class="g">✦</span>Robust tool-calling</h3>
+        <p>Built for 7–14B local models: malformed JSON repaired, unknown
+        Spells corrected conversationally, prompted fallback when the
+        server has no native tools.</p></div>
+      <div class="cell"><h3><span class="g">◈</span>Seals &amp; time-travel</h3>
+        <p>JSON checkpoints per superstep (memory / SQLite / Postgres);
+        resume, <code>interrupt()</code> for human-in-the-loop, replay
+        from any historic Seal.</p></div>
+      <div class="cell"><h3><span class="g">⚡</span>Streaming Omens</h3>
+        <p>Typed, timestamped events for every lifecycle point;
+        combinable modes; live tokens pushed from inside a running
+        Sigil.</p></div>
+      <div class="cell"><h3><span class="g">↯</span>Resilience policies</h3>
+        <p>Per-Sigil timeout, retries with backoff and jitter, fallback
+        Sigils reading a reserved error channel. Failure is a path, not
+        a crash.</p></div>
+      <div class="cell"><h3><span class="g">▣</span>Wards middleware</h3>
+        <p>Transform or veto any delta before it touches state: audit
+        trails, usage tallies, redaction — applied before Seals and logs
+        ever see the data.</p></div>
+      <div class="cell"><h3><span class="g">◉</span>Local tracing</h3>
+        <p>A complete execution trace rendered to one self-contained HTML
+        file. Zero external requests — your LangSmith is a file on
+        disk.</p></div>
+      <div class="cell"><h3><span class="g">∅</span>Zero-dependency core</h3>
+        <p>The engine is pure Python stdlib. HTTP adapters, Postgres,
+        in-process GGUF — all optional extras, all lazily imported.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="local">
+  <div class="wrap split">
+    <div>
+      <div class="sect-tag">Local first</div>
+      <h2>Built for the models you actually run</h2>
+      <p>One OpenAI-compatible adapter covers llama-server, vLLM,
+      LM Studio and Ollama's <code>/v1</code>; a native Ollama adapter
+      and in-process GGUF loading round it out. The transcript is
+      translated to each server's tool wire format, so local models
+      genuinely see their tool results — and small models stop
+      re-calling the same tool forever.</p>
+      <p style="margin-top:12px">Tests never require a model: a scripted
+      oracle makes every flow deterministic, and the integration suite
+      against a real server is strictly opt-in.</p>
+    </div>
+    <div>
+<pre><span class="c-k">from</span> sanctum.oracle.openai_compat <span class="c-k">import</span> OpenAICompatibleOracle
 
 oracle = OpenAICompatibleOracle(
-    arcana=<span class="s">"qwen2.5:7b"</span>,
-    base_url=<span class="s">"http://127.0.0.1:8080/v1"</span>,  <span class="c"># llama-server, Ollama, vLLM…</span>
+    arcana=<span class="c-s">"qwen2.5-7b"</span>,
+    base_url=<span class="c-s">"http://127.0.0.1:8080/v1"</span>,  <span class="c-c"># llama-server</span>
 )
-
-entity = summon(oracle, Tome([add]), spell_calling=<span class="s">"auto"</span>)
-result = entity.invoke({<span class="s">"messages"</span>: [
-    {<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"What is 19 + 23?"</span>},
-]})</pre>
+entity = summon(oracle, tome,
+    role=<span class="c-s">"You are a scryer."</span>,
+    spell_calling=<span class="c-s">"auto"</span>)  <span class="c-c"># prompted fallback included</span></pre>
     </div>
-  </div>
-</section>
-
-<section class="alt" id="features">
-  <div class="wrap">
-    <div class="kicker">The engine</div>
-    <h2>Small surface, serious machinery</h2>
-    <p class="lede">The core is pure Python standard library. Everything below ships in it.</p>
-    <div class="grid">
-      <div class="card"><h3>Cyclic state graphs</h3>
-        <p>BSP supersteps: active nodes run in parallel, return partial deltas,
-        conditional edges close the loops. Bounded by <code>recursion_limit</code>.
-        Not a DAG — on purpose.</p></div>
-      <div class="card"><h3>Deterministic state</h3>
-        <p>Every state channel declares its reducer (overwrite, append, add, or
-        yours). Deltas merge in node-registration order — identical runs, even
-        under parallelism.</p></div>
-      <div class="card"><h3>Seals &amp; time-travel</h3>
-        <p>A JSON checkpoint per superstep (memory, SQLite, Postgres). Resume,
-        pause with <code>interrupt()</code> for human approval, or replay from
-        any historic Seal.</p></div>
-      <div class="card"><h3>Streaming Omens</h3>
-        <p>Typed, timestamped events for every boundary of the run — plus live
-        tokens from inside a node. Combinable modes, ready for SSE.</p></div>
-      <div class="card"><h3>Resilience policies</h3>
-        <p>Declarative per-node timeout, retries with jittered backoff, and
-        fallback nodes that read the reserved <code>__errors__</code> channel.
-        No try/except soup.</p></div>
-      <div class="card"><h3>Wards middleware</h3>
-        <p>Intercept every state delta before it merges: audit to JSONL, tally
-        token usage, redact secrets, or veto outright. A pipeline, in
-        registration order.</p></div>
-    </div>
-  </div>
-</section>
-
-<section id="local">
-  <div class="wrap split">
-    <div class="term">
-      <div class="bar">robust tool-calling — what actually happens with a 7B</div>
-      <pre><span class="c"># the model emits a broken call…</span>
-<span class="r">assistant:</span> {"spell": "calculate", "arguments": {"expr": "19+23"
-<span class="c"># …sanctum repairs it, or answers with a correction the model understands</span>
-<span class="g">repaired:</span>  calculate({"expr": "19+23"})  <span class="c">← unclosed JSON recovered</span>
-<span class="r">assistant:</span> calls unknown spell "compute"
-<span class="g">corrected:</span> "Unknown Spell 'compute'. Available: calculate.
-            Write the call again using one of those exact names."
-<span class="c"># no native tool support at all? schemas travel in the prompt:</span>
-<span class="g">prompted:</span>  &lt;spell_call&gt;{"spell": …}&lt;/spell_call&gt;  <span class="c">← parsed from plain text</span></pre>
-    </div>
-    <div>
-      <div class="kicker">Local-first, for real</div>
-      <h2>Built for the models you actually run</h2>
-      <p class="lede" style="margin-bottom:18px">Small local models break
-        tool-calls: malformed JSON, hallucinated tools, missing arguments.
-        Most frameworks assume a frontier API that never fails. Sanctum treats
-        those failures as the normal case — a repair layer fixes what it can
-        and converses the model through the rest, bounded by
-        <code style="font-family:var(--mono);font-size:.9em">max_repair_rounds</code>.</p>
-      <p class="lede" style="margin-bottom:0">Validated end-to-end against
-        llama.cpp: native grammar-constrained tools when the server supports
-        them, automatic fallback to prompted calling when it doesn't. Never a
-        proprietary API in the core.</p>
-    </div>
-  </div>
-</section>
-
-<section class="alt" id="observability">
-  <div class="wrap">
-    <div class="kicker">Observability without services</div>
-    <h2>See every superstep — no SaaS attached</h2>
-    <p class="lede">Record a run with <code style="font-family:var(--mono);font-size:.9em">TraceRecorder</code>
-      and render it to a single self-contained HTML file: the graph, the
-      timeline, every delta, every tool call. No accounts, no telemetry, no
-      external requests — it works on a plane.</p>
-    <div class="imgframe"><img src="assets/trace-viewer.svg" alt="The sanctum trace viewer: graph, timeline and per-node detail rendered to a single HTML file"></div>
   </div>
 </section>
 
 <section id="compare">
   <div class="wrap">
-    <div class="kicker">Positioning</div>
+    <div class="sect-tag">The honest table</div>
     <h2>An honest comparison</h2>
-    <p class="lede">Sanctum doesn't chase feature parity with LangGraph. It competes
-      on a niche: reliability with local 7–14B models, an impeccable
-      out-of-the-box experience, and observability that never leaves your disk.</p>
-    <div class="tablewrap">
-      <table>
-        <tr><th></th><th>Sanctum</th><th>LangGraph</th><th>n8n</th></tr>
-        <tr><td>Core dependencies</td><td class="yes">0 (stdlib)</td><td class="mid">langchain-core +</td><td class="mid">Node.js stack</td></tr>
-        <tr><td>Local models as the default</td><td class="yes">yes — the design center</td><td class="mid">possible</td><td class="mid">via integrations</td></tr>
-        <tr><td>Repairs broken tool-calls</td><td class="yes">first-class layer</td><td class="no">—</td><td class="no">—</td></tr>
-        <tr><td>Tracing without a SaaS</td><td class="yes">one local HTML file</td><td class="mid">LangSmith (cloud)</td><td class="mid">self-host UI</td></tr>
-        <tr><td>Cyclic graphs / supersteps</td><td class="yes">yes (Pregel/BSP)</td><td class="yes">yes (Pregel/BSP)</td><td class="no">workflow DAG</td></tr>
-      </table>
-    </div>
-    <p style="margin-top:16px;font-size:.9rem"><a href="comparison/">Full 13-row comparison, including where LangGraph is the better choice →</a></p>
+    <table>
+      <tr><th></th><th>Sanctum</th><th>LangGraph</th><th>n8n</th></tr>
+      <tr><td>Core dependencies</td><td><span class="yes">0 (stdlib)</span></td><td>langchain-core + more</td><td>Node.js platform</td></tr>
+      <tr><td>Local models as first-class</td><td><span class="yes">yes — the point</span></td><td>possible</td><td>via nodes</td></tr>
+      <tr><td>Cyclic graphs / supersteps</td><td><span class="yes">yes (BSP)</span></td><td><span class="yes">yes (Pregel)</span></td><td><span class="no">DAG-ish</span></td></tr>
+      <tr><td>Checkpoints &amp; time-travel</td><td><span class="yes">yes, JSON</span></td><td><span class="yes">yes</span></td><td>executions log</td></tr>
+      <tr><td>Tool-repair for small models</td><td><span class="yes">built-in</span></td><td><span class="no">no</span></td><td><span class="no">no</span></td></tr>
+      <tr><td>Tracing without a SaaS</td><td><span class="yes">one HTML file</span></td><td>LangSmith (cloud)</td><td>built-in UI</td></tr>
+    </table>
+    <p style="margin-top:16px;font-size:.85rem"><a href="comparison/">Full 13-row comparison, including where LangGraph is the better choice →</a></p>
   </div>
 </section>
 
 <section class="alt" id="ecosystem">
   <div class="wrap">
-    <div class="kicker">Ecosystem</div>
+    <div class="sect-tag">The ecosystem</div>
     <h2>The engine and the spellbook</h2>
-    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
+    <div class="eco">
       <div class="card">
-        <h3>sanctum-engine</h3>
-        <p>The orchestration engine — this project. Graphs, state, checkpoints,
-        streaming, oracles, resilience, tracing.</p>
+        <h3><span class="g">◆</span> sanctum-engine</h3>
+        <p>Execution: the graph, the state, the scheduler, the Oracles,
+        the resilience. Everything on this page.</p>
         <p style="margin-top:10px"><a href="https://github.com/zquintero246/sanctum-engine">GitHub</a> · <a href="https://pypi.org/project/sanctum-engine/">PyPI</a></p>
       </div>
       <div class="card">
-        <h3>AgentGrimoire</h3>
-        <p>A community spellbook of local-first tools. Each spell carries a JSON
-        manifest; <code>Tome.load_from_directory()</code> loads the whole tree
-        into any agent in one line.</p>
+        <h3><span class="g">✦</span> AgentGrimoire</h3>
+        <p>Capability: a folder-per-Spell tool library, loadable by
+        convention with <code>Tome.load_from_directory()</code>. Either
+        side evolves without touching the other.</p>
         <p style="margin-top:10px"><a href="https://github.com/zquintero246/AgentGrimoire">GitHub</a></p>
       </div>
     </div>
@@ -292,15 +345,53 @@ result = entity.invoke({<span class="s">"messages"</span>: [
 
 <footer>
   <div class="wrap">
-    <span>© 2026 Zabdiel Quintero · MIT License</span>
-    <span>
-      <a href="getting-started/">Docs</a> ·
-      <a href="architecture/">Design document</a> ·
-      <a href="https://github.com/zquintero246/sanctum-engine">GitHub</a> ·
+    <span class="skull">☠</span>
+    <span>SANCTVM — the chamber is open. Local-only · no telemetry.</span>
+    <div class="links">
+      <a href="getting-started/">Docs</a>
+      <a href="architecture/">Design document</a>
+      <a href="https://github.com/zquintero246/sanctum-engine">GitHub</a>
       <a href="https://pypi.org/project/sanctum-engine/">PyPI</a>
-    </span>
+    </div>
   </div>
 </footer>
 
+<script>
+/* The summoning circle: an ASCII litany ring, drawn live. Self-contained. */
+(function () {
+  const el = document.getElementById("sigil");
+  if (!el) return;
+  const W = 37, H = 19, cx = (W - 1) / 2, cy = (H - 1) / 2, rx = 16, ry = 8.4;
+  const litany = "SANCTVM·RITVS·AETHER·OMEN·SIGILLVM·";
+  let t = 0;
+  function frame() {
+    const grid = Array.from({ length: H }, () => Array(W).fill(" "));
+    const put = (x, y, ch) => {
+      x = Math.round(x); y = Math.round(y);
+      if (x >= 0 && x < W && y >= 0 && y < H) grid[y][x] = ch;
+    };
+    for (let s = 0; s < 3; s++) {
+      const a = t * 0.9 + (s * 2 * Math.PI) / 3;
+      for (let r = 3; r <= 12; r++)
+        put(cx + Math.cos(a) * (r / 13) * rx, cy + Math.sin(a) * (r / 13) * ry, "·");
+    }
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * 2 * Math.PI - t * 0.55;
+      put(cx + Math.cos(a) * rx * 0.62, cy + Math.sin(a) * ry * 0.66, i % 2 ? "∘" : "+");
+    }
+    for (let i = 0; i < litany.length; i++) {
+      const a = (i / litany.length) * 2 * Math.PI + t * 0.3;
+      put(cx + Math.cos(a) * rx, cy + Math.sin(a) * ry, litany[i]);
+    }
+    put(cx, cy, "✦");
+    if (Math.random() < 0.3)
+      put(Math.random() * W, Math.random() * H, "▓▒░"[Math.floor(Math.random() * 3)]);
+    el.textContent = grid.map((row) => row.join("")).join("\n");
+    t += 0.13;
+  }
+  frame();
+  setInterval(frame, 130);
+})();
+</script>
 </body>
 </html>

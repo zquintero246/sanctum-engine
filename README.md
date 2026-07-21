@@ -1,10 +1,14 @@
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="SANCTVM — local-first orchestration for AI agents" width="880">
+</p>
+
 # Sanctum
 
 [![CI](https://github.com/zquintero246/sanctum-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/zquintero246/sanctum-engine/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/sanctum-engine)](https://pypi.org/project/sanctum-engine/)
-[![coverage](https://img.shields.io/badge/coverage-94%25-6d8f6a)](https://github.com/zquintero246/sanctum-engine/actions/workflows/ci.yml)
-[![license: MIT](https://img.shields.io/badge/license-MIT-b49b5e)](LICENSE)
-[![python](https://img.shields.io/pypi/pyversions/sanctum-engine)](pyproject.toml)
+[![PyPI](https://img.shields.io/pypi/v/sanctum-engine?color=d43b2a)](https://pypi.org/project/sanctum-engine/)
+[![coverage](https://img.shields.io/badge/coverage-94%25-cfc8b8)](https://github.com/zquintero246/sanctum-engine/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-7e211a)](LICENSE)
+[![python](https://img.shields.io/pypi/pyversions/sanctum-engine?color=5d574d)](pyproject.toml)
 
 *Where agents are summoned, bound, and set to work — a minimal, local-first
 orchestration engine for cyclic state graphs.*
@@ -34,6 +38,9 @@ entirely on local models.
 |---|---|
 | **Cyclic state graphs** | BSP supersteps, static fan-out, conditional edges, cycles bounded by `recursion_limit` — not a DAG |
 | **Deterministic state** | Per-Conduit reducers applied in Sigil insertion order; identical runs, even under parallelism |
+| **Wait-all joins** | `join="all"` turns a Sigil into a barrier over its predecessors — uneven branches converge, across supersteps, surviving checkpoints |
+| **Circles — subgraphs** | Mount a compiled Rite as one Sigil: a summoned agent becomes a node of a larger pipeline, its inner events echoed to the outer stream |
+| **Scatter — map-reduce** | Fan out over a runtime-sized list with bounded concurrency; results land in item order |
 | **Local-first Oracles** | Ollama (native & `/v1`), llama-server, vLLM, LM Studio, in-process GGUF — never a proprietary API in the core |
 | **Robust tool-calling** | Malformed JSON repaired, unknown Spells corrected conversationally, prompted fallback for models without tools |
 | **Seals & time-travel** | JSON checkpoints per superstep (memory/SQLite/Postgres), resume, `interrupt()` human-in-the-loop, replay from any Seal |
@@ -126,3 +133,27 @@ Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) (includes
 how to run the opt-in integration tests against a local Ollama) and the
 [design document](docs/architecture.md) for the rationale behind every
 trade-off. Licensed [MIT](LICENSE).
+
+---
+
+```text
+                E  N  ·  S I
+           O M           ·    G
+         ·              ·       I
+                  ∘    +·         L
+       R      +        ·   ∘       L
+      E                ·      +
+     H      ∘         ·             V
+                                     M
+     T     +     ·   ✦         ∘
+     E    ·· ····       ·            ·
+       ···              ··    +     S
+      A     ∘             ··
+       ·       +            ∘·     A
+                   ∘    +    ··   N
+         S                     ·C
+           V T                T
+                I  R  ·  M V
+
+        the chamber is open · local-only · no telemetry
+```

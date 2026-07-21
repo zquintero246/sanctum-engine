@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="250" viewBox="0 0 880 250" role="img" aria-label="Sanctum - local-first orchestration for AI agents">
+  <rect width="880" height="250" fill="#050505"/>
+  <g fill="none" stroke="#7e211a" stroke-width="1.5">
+    <path d="M 1 14 L 1 1 L 14 1"/><path d="M 866 1 L 879 1 L 879 14"/>
+    <path d="M 879 236 L 879 249 L 866 249"/><path d="M 14 249 L 1 249 L 1 236"/>
+  </g>
+  <g font-family="Consolas,Menlo,monospace" font-size="10.5" fill="#d43b2a" opacity="0.9">
+    <text x="40" y="34" xml:space="preserve"></text><text x="40" y="45" xml:space="preserve">             E  N  ·  S I</text><text x="40" y="56" xml:space="preserve">        O M           ·    G</text><text x="40" y="67" xml:space="preserve">      ·              ·       I</text><text x="40" y="78" xml:space="preserve">               ∘    +·         L</text><text x="40" y="89" xml:space="preserve">    R      +        ·   ∘       L</text><text x="40" y="100" xml:space="preserve">   E                ·      +</text><text x="40" y="111" xml:space="preserve">  H      ∘         ·             V</text><text x="40" y="122" xml:space="preserve">                                  M</text><text x="40" y="133" xml:space="preserve">  T     +     ·   ✦         ∘</text><text x="40" y="144" xml:space="preserve">  E    ·· ····       ·            ·</text><text x="40" y="155" xml:space="preserve">    ···              ··    +     S</text><text x="40" y="166" xml:space="preserve">   A     ∘             ··</text><text x="40" y="177" xml:space="preserve">    ·       +            ∘·     A</text><text x="40" y="188" xml:space="preserve">                ∘    +    ··   N</text><text x="40" y="199" xml:space="preserve">      S                     ·C</text><text x="40" y="210" xml:space="preserve">        V T                T</text><text x="40" y="221" xml:space="preserve">             I  R  ·  M V</text><text x="40" y="232" xml:space="preserve"></text>
+  </g>
+  <g font-family="Consolas,Menlo,monospace">
+    <text x="330" y="86" font-size="13" letter-spacing="6" fill="#5d574d">// LOCAL-FIRST ORCHESTRATION FOR AI AGENTS</text>
+    <text x="326" y="146" font-size="46" letter-spacing="16" fill="#7e211a" opacity="0.55">SANCTVM</text>
+    <text x="328" y="144" font-size="46" letter-spacing="16" fill="#cfc8b8">SANCTVM</text>
+    <text x="330" y="184" font-size="13" fill="#8a8377">cyclic state graphs · supersteps · summoned entities</text>
+    <text x="330" y="214" font-size="12" fill="#d43b2a">$ pip install sanctum-engine</text>
+    <text x="546" y="214" font-size="12" fill="#5d574d">█</text>
+  </g>
+</svg>
