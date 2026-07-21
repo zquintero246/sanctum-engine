@@ -9,12 +9,18 @@ edges — static fan-out plus routers — to compute the next frontier,
 ``recursion_limit``.
 
 Fan-out: a Sigil with several static outgoing edges activates all its
-targets for the next superstep. Fan-in uses "any" semantics: a Sigil runs
-as soon as any predecessor activates it, and multiple activations within
-the same superstep coalesce into a single execution; a "wait for all
-predecessors" join is planned future work. If a Sigil raises, its sibling
-tasks are cancelled, the superstep's deltas are discarded, and the failure
-surfaces as SigilExecutionError.
+targets for the next superstep. Fan-in defaults to "any" semantics: a
+Sigil runs as soon as any predecessor activates it, and multiple
+activations within the same superstep coalesce into a single execution.
+Sigils bound with ``join="all"`` are a barrier instead: activations
+accumulate — across supersteps when branches have uneven lengths — and
+the Sigil enters the frontier only once every static predecessor has
+signaled it. Pending activations persist inside each Seal's metadata
+(reserved key ``"__join_pending__"``) so resumption keeps the barrier's
+progress; if the frontier empties while a join still waits, the run
+fails with SigilJoinError naming the missing predecessors. If a Sigil
+raises, its sibling tasks are cancelled, the superstep's deltas are
+discarded, and the failure surfaces as SigilExecutionError.
 
 When a Codex is attached, a Seal (full Aether, next frontier, superstep
 number) is written at the end of every superstep, and one more when a
@@ -64,6 +70,7 @@ from sanctum.ritual.constants import DEFAULT_RECURSION_LIMIT, END, START
 from sanctum.ritual.errors import (
     RecursionLimitError,
     SigilExecutionError,
+    SigilJoinError,
     SigilTimeoutError,
 )
 from sanctum.ritual.interrupt import Interrupt
@@ -137,6 +144,7 @@ class Scheduler:
         policies: Mapping[str, SigilPolicy] | None = None,
         default_policy: SigilPolicy | None = None,
         wards: Sequence[Ward] | None = None,
+        joins: Mapping[str, str] | None = None,
     ) -> None:
         self._codex = codex
         self._policies: dict[str, SigilPolicy] = dict(policies or {})
@@ -156,6 +164,16 @@ class Scheduler:
         }
         self._writer_sigils: set[str] = {
             name for name, fn in self._sigils.items() if _accepts_writer(fn)
+        }
+        # join="all" Sigils and the static predecessors each one waits for.
+        self._join_required: dict[str, frozenset[str]] = {
+            name: frozenset(
+                source
+                for source, targets in self._edges.items()
+                if name in targets
+            )
+            for name, mode in (joins or {}).items()
+            if mode == "all"
         }
         if self._wards:
             manifest = {
@@ -180,6 +198,7 @@ class Scheduler:
         frontier: Iterable[str] | None = None,
         superstep: int = 0,
         emit: EmitFn = _discard,
+        join_pending: Mapping[str, Iterable[str]] | None = None,
     ) -> Aether:
         """Perform the superstep loop until the ritual concludes.
 
@@ -198,16 +217,25 @@ class Scheduler:
             RecursionLimitError: If the Invocation would exceed
                 `recursion_limit` supersteps.
             SigilExecutionError: If a Sigil raises during a superstep.
+            SigilJoinError: If the frontier empties while a ``join="all"``
+                Sigil still waits for predecessors that will never run.
             TypeError: If a Sigil returns something other than a mapping.
             ValueError: If a router returns a value that is neither a bound
-                Sigil nor END, or is missing from its `path_map`.
+                Sigil nor END, is missing from its `path_map`, or targets a
+                ``join="all"`` Sigil.
         """
         if self._wards:
             emit = self._wrap_emit_with_wards(emit)
         aether: Aether = dict(input)
-        current_frontier: set[str] = (
-            set(self._edges.get(START, ())) if frontier is None else set(frontier)
-        )
+        pending: dict[str, set[str]] = {
+            name: set(sources) for name, sources in (join_pending or {}).items()
+        }
+        if frontier is None:
+            current_frontier: set[str] = set()
+            for target in self._edges.get(START, ()):
+                self._admit(START, target, pending, current_frontier)
+        else:
+            current_frontier = set(frontier)
         supersteps = superstep
         previous: list[str] = []
         await emit(RiteBegan(invocation_id=invocation_id))
@@ -217,6 +245,22 @@ class Scheduler:
                 key=self._order.__getitem__,
             )
             if not active:
+                if pending:
+                    missing = {
+                        name: sorted(self._join_required[name] - sources)
+                        for name, sources in sorted(pending.items())
+                    }
+                    described = "; ".join(
+                        f"'{name}' still waits for {waits}"
+                        for name, waits in missing.items()
+                    )
+                    raise SigilJoinError(
+                        f"Invocation '{invocation_id}' concluded with "
+                        f"unsatisfied join='all' Sigil(s): {described}. A "
+                        "branch feeding the join never ran — check the "
+                        "routers on its predecessors, or use join='any'.",
+                        pending=missing,
+                    )
                 await emit(RiteManifested(aether=dict(aether), superstep=supersteps))
                 return aether
             if supersteps >= self._recursion_limit:
@@ -244,6 +288,7 @@ class Scheduler:
                         "interrupted": True,
                         "sigil": pause.sigil,
                         "reason": pause.reason,
+                        **self._join_metadata(pending),
                     },
                     emit=emit,
                 )
@@ -276,9 +321,14 @@ class Scheduler:
             supersteps += 1
             previous = active
             await emit(SuperstepCompleted(superstep=supersteps, aether=dict(aether)))
-            current_frontier = await self._evaluate_edges(active, aether)
+            current_frontier = await self._evaluate_edges(active, aether, pending)
             await self._write_seal(
-                invocation_id, aether, current_frontier, supersteps, emit=emit
+                invocation_id,
+                aether,
+                current_frontier,
+                supersteps,
+                metadata=self._join_metadata(pending) or None,
+                emit=emit,
             )
 
     async def _write_seal(
@@ -531,19 +581,65 @@ class Scheduler:
             merged.update(delta)
         return merged
 
+    def _admit(
+        self,
+        source: str,
+        target: str,
+        pending: dict[str, set[str]],
+        frontier: set[str],
+    ) -> None:
+        """Let one activation through, honoring the target's join mode.
+
+        A ``join="any"`` target (the default) enters the frontier at once.
+        A ``join="all"`` target records `source` among its pending
+        activators and enters only when every static predecessor has
+        signaled it — at which point its pending record resets, so joins
+        inside cycles re-arm on every pass.
+        """
+        required = self._join_required.get(target)
+        if required is None:
+            frontier.add(target)
+            return
+        gathered = pending.setdefault(target, set())
+        gathered.add(source)
+        if gathered >= required:
+            frontier.add(target)
+            pending.pop(target, None)
+
+    def _join_metadata(self, pending: dict[str, set[str]]) -> dict[str, Any]:
+        """Serialize pending join activations for a Seal's metadata.
+
+        Returns ``{"__join_pending__": {sigil: sorted activators}}`` when a
+        join is mid-gather, an empty dict otherwise — resumption restores
+        the barrier's progress from this reserved key.
+        """
+        if not pending:
+            return {}
+        return {
+            "__join_pending__": {
+                name: sorted(sources) for name, sources in pending.items()
+            }
+        }
+
     async def _evaluate_edges(
-        self, executed: Sequence[str], aether: Aether
+        self,
+        executed: Sequence[str],
+        aether: Aether,
+        pending: dict[str, set[str]],
     ) -> set[str]:
         """Compute the next frontier from the executed Sigils' edges.
 
         Static edges fan out to all their targets; conditional edges are
         routed against the post-superstep Aether, in Sigil insertion order.
         The frontier is a set, so a Sigil activated by several predecessors
-        in the same superstep runs once (fan-in "any" semantics).
+        in the same superstep runs once (fan-in "any" semantics). Every
+        activation passes through ``_admit``, so ``join="all"`` targets
+        hold back until their barrier is complete.
         """
         frontier: set[str] = set()
         for name in executed:
-            frontier.update(self._edges.get(name, ()))
+            for target in self._edges.get(name, ()):
+                self._admit(name, target, pending, frontier)
             if name in self._conditional_edges:
                 frontier.add(await self._route(name, aether))
         return frontier
@@ -569,5 +665,11 @@ class Scheduler:
             raise ValueError(
                 f"Router at Sigil '{source}' routed to unknown Sigil "
                 f"'{choice}'; routers must return a bound Sigil name or END."
+            )
+        if choice in self._join_required:
+            raise ValueError(
+                f"Router at Sigil '{source}' routed to '{choice}', which is "
+                "a join='all' Sigil; conditional activations cannot satisfy "
+                "a wait-all join — reach it through static edges instead."
             )
         return choice

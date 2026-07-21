@@ -14,6 +14,7 @@ from sanctum.ritual.errors import (
     RecursionLimitError,
     RitualValidationError,
     SigilExecutionError,
+    SigilJoinError,
     SigilTimeoutError,
 )
 from sanctum.ritual.interrupt import Interrupt, interrupt
@@ -35,6 +36,7 @@ __all__ = [
     "Scheduler",
     "SigilExecutionError",
     "SigilFn",
+    "SigilJoinError",
     "SigilPolicy",
     "SigilTimeoutError",
     "exponential_backoff",

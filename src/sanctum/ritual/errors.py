@@ -41,6 +41,21 @@ class SigilExecutionError(Exception):
         self.aether = aether
 
 
+class SigilJoinError(Exception):
+    """The rite concluded while a join still awaited absent celebrants.
+
+    Raised when an Invocation's frontier empties while one or more
+    ``join="all"`` Sigils are still waiting for static predecessors that
+    will never run — typically because a router steered a feeding branch
+    away from the join. `pending` maps each waiting Sigil to the sorted
+    list of predecessors it is still missing.
+    """
+
+    def __init__(self, message: str, *, pending: dict[str, list[str]]) -> None:
+        super().__init__(message)
+        self.pending = pending
+
+
 class SigilTimeoutError(SigilExecutionError):
     """A Sigil pondered past its allotted time and was cut off.
 

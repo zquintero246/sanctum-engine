@@ -5,6 +5,20 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [Semantic Versioning](https://semver.org/) (see
 CONTRIBUTING.md for what counts as a breaking change pre-1.0).
 
+## [Unreleased]
+
+### Added
+- Wait-all fan-in: `add_sigil(name, fn, join="all")` turns a Sigil into a
+  barrier over its static predecessors. Activations accumulate across
+  supersteps (uneven branch lengths converge correctly), persist through
+  Seals (reserved metadata key `__join_pending__`, restored on resumption
+  and time-travel), and the barrier re-arms after firing so joins inside
+  cycles work per pass. Compile-time validation keeps joins sound: at
+  least one static incoming edge, no conditional edge targets, no
+  `on_error` fallback targets. A feeding branch that never runs fails
+  loudly with the new `SigilJoinError` (exported from `sanctum` and
+  `sanctum.ritual`), naming the missing predecessors.
+
 ## [0.2.0] — 2026-07-14
 
 ### Added

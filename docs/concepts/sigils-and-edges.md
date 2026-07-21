@@ -33,7 +33,31 @@ A Sigil that declares a `writer` parameter receives an async callable:
   are built.
 
 Static and conditional edges are mutually exclusive on the same source.
-**Fan-in** uses "any" semantics: a Sigil runs as soon as any predecessor
-activates it, and multiple activations within one superstep coalesce into
-a single execution ("wait for all" is future work — trade-offs in the
-[architecture document](../architecture.md)).
+**Fan-in** uses "any" semantics by default: a Sigil runs as soon as any
+predecessor activates it, and multiple activations within one superstep
+coalesce into a single execution.
+
+## Wait-all joins
+
+*Some Sigils refuse to act until every celebrant has arrived.*
+
+`add_sigil(name, fn, join="all")` turns a Sigil into a **barrier** over
+its static predecessors: activations accumulate — across supersteps when
+converging branches have uneven lengths — and the Sigil runs exactly once,
+when the last predecessor signals it. Pending activations are recorded in
+each Seal's metadata (reserved key `__join_pending__`), so resumption and
+time-travel preserve the barrier's progress.
+
+```python
+ritual.add_sigil("synthesize", synthesize, join="all")
+ritual.add_edge("scout_papers", "synthesize")
+ritual.add_edge("scout_web", "synthesize")      # runs once, after both
+```
+
+Three rules keep joins sound (all checked at compile time): a `join="all"`
+Sigil needs at least one static incoming edge, cannot be the target of a
+conditional edge (a router's activation cannot satisfy a barrier), and
+cannot serve as an `on_error` fallback. If a feeding branch never runs —
+typically because an upstream router steered away — the Invocation ends
+with `SigilJoinError` naming the missing predecessors. Trade-offs in the
+[architecture document](../architecture.md).

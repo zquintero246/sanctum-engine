@@ -10,8 +10,9 @@ Ritual has an AetherSchema, by overwrite otherwise), and edges decide the
 next frontier. Cycles are allowed and are what enables agentic behavior
 (think -> act -> observe -> ...), bounded by ``recursion_limit``. With a
 Codex, every superstep leaves a Seal (resumption, ``interrupt()``,
-time-travel); ``astream`` yields Omens live. A "wait for all
-predecessors" fan-in and subgraphs (Circles) arrive in later phases.
+time-travel); ``astream`` yields Omens live. Fan-in is "any" by default
+— ``add_sigil(..., join="all")`` turns a Sigil into a barrier over its
+static predecessors. Subgraphs (Circles) arrive in a later phase.
 """
 
 from __future__ import annotations
@@ -48,10 +49,12 @@ class Ritual:
     so concurrent writes to the same Conduit are deterministic.
 
     A source with several static edges fans out: all targets activate in
-    the next superstep. Fan-in uses "any" semantics: a Sigil runs as soon
-    as any predecessor activates it, and multiple activations within one
-    superstep coalesce into a single execution ("wait for all
-    predecessors" is planned future work).
+    the next superstep. Fan-in uses "any" semantics by default: a Sigil
+    runs as soon as any predecessor activates it, and multiple activations
+    within one superstep coalesce into a single execution. Binding a Sigil
+    with ``join="all"`` makes it a barrier instead: it waits — across
+    supersteps when branches have uneven lengths — until every static
+    predecessor has activated it, then runs once.
     """
 
     def __init__(self, schema: AetherSchema | None = None) -> None:
@@ -60,9 +63,15 @@ class Ritual:
         self._edges: dict[str, list[str]] = {}
         self._conditional_edges: dict[str, tuple[RouterFn, dict[str, str] | None]] = {}
         self._policies: dict[str, SigilPolicy] = {}
+        self._joins: dict[str, str] = {}
 
     def add_sigil(
-        self, name: str, fn: SigilFn, policy: SigilPolicy | None = None
+        self,
+        name: str,
+        fn: SigilFn,
+        policy: SigilPolicy | None = None,
+        *,
+        join: str = "any",
     ) -> Ritual:
         """Bind a Sigil to the Ritual.
 
@@ -72,9 +81,18 @@ class Ritual:
         timeout, retries with backoff, `on_error` fallback (see
         SigilPolicy); it overrides ``compile(default_policy=...)``.
 
+        `join` sets the fan-in semantics: ``"any"`` (default) runs the
+        Sigil as soon as any predecessor activates it; ``"all"`` makes it a
+        barrier that waits for every static predecessor — activations
+        accumulate across supersteps (and survive Seals), and the Sigil
+        runs once when the last predecessor arrives. A ``join="all"``
+        Sigil needs at least one static incoming edge and cannot be the
+        target of a conditional edge or an `on_error` fallback (checked at
+        compile time).
+
         Raises:
             RitualValidationError: If `name` is START/END, already bound,
-                or `fn` is not callable.
+                `fn` is not callable, or `join` is not "any"/"all".
         """
         if name in (START, END):
             raise RitualValidationError(
@@ -89,9 +107,15 @@ class Ritual:
                 f"Sigil '{name}' must be bound to a callable, "
                 f"got {type(fn).__name__}."
             )
+        if join not in ("any", "all"):
+            raise RitualValidationError(
+                f"Sigil '{name}': join must be 'any' or 'all', got {join!r}."
+            )
         self._sigils[name] = fn
         if policy is not None:
             self._policies[name] = policy
+        if join == "all":
+            self._joins[name] = join
         return self
 
     def add_edge(self, source: str, target: str) -> Ritual:
@@ -264,6 +288,24 @@ class Ritual:
                         f"unknown Sigil '{target}'; bind it with add_sigil "
                         "first."
                     )
+                if target in self._joins:
+                    raise RitualValidationError(
+                        f"Conditional edge at '{source}' maps '{key}' to "
+                        f"'{target}', which is a join='all' Sigil; "
+                        "conditional activations cannot satisfy a wait-all "
+                        "join — reach it through static edges instead."
+                    )
+
+        for name in self._joins:
+            has_static_predecessor = any(
+                name in targets for targets in self._edges.values()
+            )
+            if not has_static_predecessor:
+                raise RitualValidationError(
+                    f"Sigil '{name}' declares join='all' but has no static "
+                    "incoming edge; a wait-all join needs at least one "
+                    "static predecessor to wait for."
+                )
 
         unreachable = sorted(
             set(self._sigils) - self._reachable_from_start(default_policy)
@@ -293,6 +335,7 @@ class Ritual:
             policies=self._policies,
             default_policy=default_policy,
             wards=wards,
+            joins=self._joins,
         )
 
     def _validate_policy(self, policy: SigilPolicy, owner: str | None) -> None:
@@ -321,6 +364,13 @@ class Ritual:
             if policy.on_error == owner:
                 raise RitualValidationError(
                     f"Sigil '{owner}' cannot be its own on_error fallback."
+                )
+            if policy.on_error in self._joins:
+                raise RitualValidationError(
+                    f"The on_error fallback of {described} names "
+                    f"'{policy.on_error}', which is a join='all' Sigil; a "
+                    "fallback activates without its predecessors, so it "
+                    "cannot satisfy a wait-all join."
                 )
 
     def _reachable_from_start(
@@ -376,6 +426,7 @@ class Rite:
         policies: Mapping[str, SigilPolicy] | None = None,
         default_policy: SigilPolicy | None = None,
         wards: Sequence[Ward] | None = None,
+        joins: Mapping[str, str] | None = None,
     ) -> None:
         self._schema = schema
         self._codex = codex
@@ -389,6 +440,7 @@ class Rite:
             policies=policies,
             default_policy=default_policy,
             wards=wards,
+            joins=joins,
         )
 
     async def ainvoke(
@@ -436,14 +488,15 @@ class Rite:
             ValueError: If a router returns a value that is neither a bound
                 Sigil nor END, or is missing from its `path_map`.
         """
-        aether, frontier, superstep, invocation_id = await self._prepare(
-            input, invocation_id, seal_id, updates
+        aether, frontier, superstep, invocation_id, join_pending = (
+            await self._prepare(input, invocation_id, seal_id, updates)
         )
         return await self._scheduler.run(
             aether,
             invocation_id=invocation_id,
             frontier=frontier,
             superstep=superstep,
+            join_pending=join_pending,
         )
 
     async def astream(
@@ -481,8 +534,8 @@ class Rite:
             ValueError: If `mode` names an unknown stream mode.
         """
         kinds = resolve_modes(mode)
-        aether, frontier, superstep, invocation_id = await self._prepare(
-            input, invocation_id, seal_id, updates
+        aether, frontier, superstep, invocation_id, join_pending = (
+            await self._prepare(input, invocation_id, seal_id, updates)
         )
         queue: asyncio.Queue[Omen | None] = asyncio.Queue()
 
@@ -497,6 +550,7 @@ class Rite:
                     frontier=frontier,
                     superstep=superstep,
                     emit=emit,
+                    join_pending=join_pending,
                 )
             finally:
                 await queue.put(None)
@@ -522,14 +576,16 @@ class Rite:
         invocation_id: str | None,
         seal_id: str | None,
         updates: Mapping[str, Any] | None,
-    ) -> tuple[Aether, list[str] | None, int, str]:
+    ) -> tuple[Aether, list[str] | None, int, str, Mapping[str, list[str]]]:
         """Resolve the starting state of a fresh or resumed Invocation.
 
-        Returns ``(aether, frontier, superstep, invocation_id)`` — frontier
-        None means "start from START's targets". Fresh runs validate
-        `input` against the schema and mint an invocation_id when missing;
-        resumptions restore the Seal and merge `updates` into its Aether
-        (through the Conduit reducers when a schema is set).
+        Returns ``(aether, frontier, superstep, invocation_id,
+        join_pending)`` — frontier None means "start from START's targets".
+        Fresh runs validate `input` against the schema and mint an
+        invocation_id when missing; resumptions restore the Seal, merge
+        `updates` into its Aether (through the Conduit reducers when a
+        schema is set), and recover any mid-gather ``join="all"``
+        activations from the Seal's metadata.
 
         Raises:
             SealError: On invalid fresh/resume combinations or when the
@@ -545,7 +601,7 @@ class Rite:
                 invocation_id = uuid.uuid4().hex
             if self._schema is not None:
                 self._schema.validate_input(input)
-            return dict(input), None, 0, invocation_id
+            return dict(input), None, 0, invocation_id, {}
 
         if input is not None:
             raise SealError(
@@ -563,7 +619,8 @@ class Rite:
             else:
                 aether.update(updates)
         assert invocation_id is not None  # guaranteed by _load_seal
-        return aether, list(seal.frontier), seal.superstep, invocation_id
+        join_pending = dict(seal.metadata.get("__join_pending__", {}))
+        return aether, list(seal.frontier), seal.superstep, invocation_id, join_pending
 
     async def _load_seal(self, invocation_id: str | None, seal_id: str | None) -> Seal:
         """Fetch the Seal a resumption continues from.

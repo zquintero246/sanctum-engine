@@ -77,18 +77,30 @@ unvalidated — a deliberate low-friction mode for prototypes and tests.
 
 ## 4. Design decisions and trade-offs
 
-### 4.1 Fan-in: "any" semantics
+### 4.1 Fan-in: "any" by default, "all" on request
 
 A Sigil executes as soon as **any** predecessor activates it; multiple
 activations within one superstep coalesce into a single execution (the
-frontier is a set). Trade-off: an "all predecessors" join (barrier
-fan-in) cannot yet be expressed — a Sigil downstream of an unbalanced
-fan-out may run before its slower ancestor's branch completes, and run
-again later. "Wait-for-all" joins are planned future work; "any" was
-chosen first because it is the simpler semantics to reason about, it
-never deadlocks, and the BSP structure already provides a per-superstep
-barrier that covers the common balanced fan-out/fan-in case (equal-length
-branches converge in the same superstep, verified by test).
+frontier is a set). "Any" is the default because it is the simpler
+semantics to reason about, it never deadlocks, and the BSP structure
+already provides a per-superstep barrier that covers the common balanced
+fan-out/fan-in case (equal-length branches converge in the same
+superstep, verified by test).
+
+`add_sigil(..., join="all")` opts a Sigil into **wait-all** fan-in: the
+scheduler tracks which static predecessors have signaled it (persisted in
+Seal metadata under the reserved `__join_pending__` key, so resumption
+keeps the barrier's progress), admits it into the frontier only when the
+set is complete, and re-arms the barrier afterwards so joins inside
+cycles work per pass. The design deliberately restricts the join to
+*static* predecessors: a conditional edge may or may not fire, so letting
+routers feed a barrier reintroduces the deadlock ambiguity "any" was
+chosen to avoid. Compile-time checks enforce this (no conditional edge or
+`on_error` fallback may target a join Sigil; at least one static
+predecessor must exist), and the remaining runtime hazard — an upstream
+router steering a feeding branch away entirely — fails loudly with
+`SigilJoinError` naming the missing predecessors instead of hanging or
+silently completing.
 
 ### 4.2 Deterministic reducer order
 
@@ -175,8 +187,6 @@ every new reader; the glossary (§8) is the contract between both layers.
 
 ## 5. Known limitations
 
-- **No "wait-for-all" fan-in** (§4.1): unbalanced convergent branches
-  re-execute the join Sigil per activation wave.
 - **Shallow-copy isolation** (§4.3): in-place mutation of nested values
   leaks across the superstep barrier; the reducer contract is not
   enforceable against it.
