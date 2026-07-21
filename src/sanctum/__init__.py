@@ -30,6 +30,7 @@ from sanctum.ritual import (
     SigilJoinError,
     SigilPolicy,
     SigilTimeoutError,
+    circle,
     interrupt,
 )
 from sanctum.wards import Ward, WardRejection
@@ -62,6 +63,7 @@ __all__ = [
     "Ward",
     "WardRejection",
     "__version__",
+    "circle",
     "interrupt",
     "spell",
     "summon",

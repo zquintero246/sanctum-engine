@@ -168,6 +168,21 @@ class SpellCallRejected(Omen):
     reason: str
 
 
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CircleEchoed(Omen):
+    """An Omen that sounded inside a Circle, echoed to the outer stream.
+
+    Emitted by a ``circle(...)`` Sigil for every Omen its inner Rite
+    produces: `circle` is the mounted Circle's name, `omen` the inner
+    event untouched (including inner TokenEmitted payloads). Consumers
+    that only care about the outer graph can ignore these; observability
+    layers can unwrap them to trace the full nested execution.
+    """
+
+    circle: str
+    omen: Omen
+
+
 STREAM_MODES: dict[str, tuple[type[Omen], ...]] = {
     "updates": (SigilCompleted,),
     "values": (SuperstepCompleted,),
@@ -183,6 +198,7 @@ STREAM_MODES: dict[str, tuple[type[Omen], ...]] = {
         SpellCallRepaired,
         SpellCallRejected,
         DeltaRejected,
+        CircleEchoed,
     ),
 }
 """The Omen classes each ``astream`` mode yields."""

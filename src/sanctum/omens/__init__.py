@@ -8,6 +8,7 @@ transports such as Server-Sent Events.
 
 from sanctum.omens.events import (
     STREAM_MODES,
+    CircleEchoed,
     DeltaRejected,
     Omen,
     RiteBegan,
@@ -30,6 +31,7 @@ from sanctum.omens.events import (
 from sanctum.omens.tracing import TraceRecorder, render_trace
 
 __all__ = [
+    "CircleEchoed",
     "STREAM_MODES",
     "DeltaRejected",
     "Omen",

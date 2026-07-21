@@ -8,6 +8,7 @@ parallel, collect deltas, apply reducers deterministically, evaluate edges,
 write a Seal, and repeat until END or `recursion_limit`.
 """
 
+from sanctum.ritual.circle import circle
 from sanctum.ritual.constants import DEFAULT_RECURSION_LIMIT, END, START
 from sanctum.ritual.core import Aether, Rite, Ritual
 from sanctum.ritual.errors import (
@@ -39,6 +40,7 @@ __all__ = [
     "SigilJoinError",
     "SigilPolicy",
     "SigilTimeoutError",
+    "circle",
     "exponential_backoff",
     "interrupt",
 ]

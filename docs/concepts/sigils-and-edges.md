@@ -61,3 +61,31 @@ cannot serve as an `on_error` fallback. If a feeding branch never runs —
 typically because an upstream router steered away — the Invocation ends
 with `SigilJoinError` naming the missing predecessors. Trade-offs in the
 [architecture document](../architecture.md).
+
+## Circles
+
+*A sealed rite may be drawn whole inside another's circle.*
+
+`circle(rite, name=..., input_map=..., output_map=...)` mounts a compiled
+Rite as a **single Sigil** (a subgraph as a node). Each activation runs a
+complete inner Invocation; `input_map` projects the outer Aether into the
+inner input, `output_map` projects the inner result back as this Sigil's
+delta (dicts `{inner: outer}` / `{outer: inner}`, or callables). Every
+inner Omen is echoed to the outer stream as `CircleEchoed(circle=name,
+omen=...)`, and an inner failure surfaces as a failure of the Circle's
+own Sigil — so its `SigilPolicy` governs the whole subgraph.
+
+```python
+entity = summon(oracle, tome, role="You are a scryer.")
+ritual.add_sigil("scryer", circle(
+    entity,
+    name="scryer",
+    input_map=lambda a: {"messages": [{"role": "user", "content": a["quest"]}]},
+    output_map=lambda f: {"report": f["messages"][-1]["content"]},
+))
+```
+
+Each activation is a fresh inner Invocation (inner Seals do not resume
+across outer supersteps — attach a Codex to the *outer* Rite for
+persistence), and an inner `interrupt()` surfaces as a Circle failure
+rather than an outer interrupt.

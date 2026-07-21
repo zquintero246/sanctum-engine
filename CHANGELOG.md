@@ -8,6 +8,15 @@ CONTRIBUTING.md for what counts as a breaking change pre-1.0).
 ## [Unreleased]
 
 ### Added
+- Circles (subgraphs): `circle(rite, name=..., input_map=..., output_map=...)`
+  seals a compiled Rite into a Sigil function — the inner Rite performs a
+  full Invocation per activation, its final Aether projects back as the
+  Sigil's delta, and every inner Omen is echoed to the outer stream
+  wrapped in the new `CircleEchoed` Omen (tokens included). Inner
+  failures re-surface attributed to the Circle's own Sigil, so the outer
+  `SigilPolicy` (retries, timeout, `on_error`) governs the whole
+  subgraph. This is how a `summon`-ed Entity becomes one node of a
+  larger pipeline. Exported from `sanctum` and `sanctum.ritual`.
 - Wait-all fan-in: `add_sigil(name, fn, join="all")` turns a Sigil into a
   barrier over its static predecessors. Activations accumulate across
   supersteps (uneven branch lengths converge correctly), persist through
