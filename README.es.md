@@ -123,8 +123,12 @@ defecto — no requiere modelo — y cada script acepta `--oracle ollama`:
 Sanctum es dueño de la ejecución;
 [AgentGrimoire](https://github.com/zquintero246/AgentGrimoire) es dueño
 de la capacidad — una biblioteca de herramientas con carpeta por Spell,
-cargable por convención con `Tome.load_from_directory(path)`. Cada lado
-evoluciona sin tocar al otro.
+cargable por convención con `Tome.load_from_directory(path)`; y
+[Sanctum Studio](https://github.com/zquintero246/sanctum-studio) hace
+visible la cámara — un builder visual y dashboard local donde los ritos
+se dibujan en un lienzo, corren en vivo superstep a superstep, se pausan
+para aprobación humana y viajan en el tiempo. Cada pieza evoluciona sin
+tocar a las demás.
 
 ## Desarrollo
 

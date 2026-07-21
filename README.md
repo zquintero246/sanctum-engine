@@ -120,8 +120,12 @@ no model required — and every script takes `--oracle ollama`:
 
 Sanctum owns execution; [AgentGrimoire](https://github.com/zquintero246/AgentGrimoire)
 owns capability — a folder-per-Spell tool library loadable by convention
-with `Tome.load_from_directory(path)`. Either side evolves without
-touching the other.
+with `Tome.load_from_directory(path)`; and
+[Sanctum Studio](https://github.com/zquintero246/sanctum-studio) makes
+the chamber visible — a local visual builder and dashboard where rites
+are drawn on a canvas, run live superstep by superstep, paused for human
+approval and time-traveled. Each piece evolves without touching the
+others.
 
 ## Development
 
