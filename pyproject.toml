@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sanctum-engine"
-version = "0.2.0"
+version = "0.3.0"
 description = "A minimal, local-first orchestration engine for AI agents: cyclic state graphs executed by supersteps (Pregel/BSP)."
 readme = "README.md"
 requires-python = ">=3.11"

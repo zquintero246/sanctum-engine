@@ -89,3 +89,28 @@ Each activation is a fresh inner Invocation (inner Seals do not resume
 across outer supersteps — attach a Codex to the *outer* Rite for
 persistence), and an inner `interrupt()` surfaces as a Circle failure
 rather than an outer interrupt.
+
+## Scatter
+
+*When the leads are legion, one Sigil works them all at once.*
+
+`scatter(fn, over="leads", into="reports", concurrency=8)` builds a
+Sigil that maps `fn` over the **dynamic** list at `Aether["leads"]` —
+every item worked concurrently (bounded), results written to
+`Aether["reports"]` **in item order** regardless of completion order.
+`fn` may be sync or async and may declare a second parameter to receive
+the full Aether. Per-item failures either fail the Sigil (default — its
+`SigilPolicy` applies) or, with `on_item_error="collect"`, become
+`{"__scatter_error__": ...}` entries in position. The reduce step is
+simply the next Sigil.
+
+```python
+ritual.add_sigil("survey", scatter(scout, over="leads", into="reports"))
+ritual.add_edge("plan", "survey")
+ritual.add_edge("survey", "synthesize")
+```
+
+Design note: this is deliberately a Sigil factory, not a scheduler
+extension — dynamic fan-out lives inside one node, so Seals, resumption
+and the frontier model stay untouched (the BSP contract is the moat).
+

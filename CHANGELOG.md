@@ -5,9 +5,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the
 project adheres to [Semantic Versioning](https://semver.org/) (see
 CONTRIBUTING.md for what counts as a breaking change pre-1.0).
 
-## [Unreleased]
+## [0.3.0] — 2026-07-21
 
 ### Fixed
+- `OllamaOracle` (native `/api/chat`) applies the same transcript
+  translation as the OpenAI adapter (`spell_calls` → native
+  `tool_calls` with dict arguments, `role: "spell"` → `role: "tool"`).
 - `OpenAICompatibleOracle` now translates the transcript to the OpenAI
   wire format before sending: assistant `spell_calls` become
   `tool_calls` (arguments as a JSON string, null content) and
@@ -18,6 +21,11 @@ CONTRIBUTING.md for what counts as a breaking change pre-1.0).
   quality. Verified against a live llama-server: one cast, clean answer.
 
 ### Added
+- Scatter (dynamic parallel map): `scatter(fn, over=..., into=...,
+  concurrency=8, on_item_error="raise"|"collect")` builds a Sigil that
+  works a runtime-sized list concurrently and writes results in item
+  order — LangGraph-`Send`-class capability without touching the BSP
+  frontier model. Exported from `sanctum` and `sanctum.ritual`.
 - Circles (subgraphs): `circle(rite, name=..., input_map=..., output_map=...)`
   seals a compiled Rite into a Sigil function — the inner Rite performs a
   full Invocation per activation, its final Aether projects back as the

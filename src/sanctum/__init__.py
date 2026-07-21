@@ -32,10 +32,11 @@ from sanctum.ritual import (
     SigilTimeoutError,
     circle,
     interrupt,
+    scatter,
 )
 from sanctum.wards import Ward, WardRejection
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "END",
@@ -65,6 +66,7 @@ __all__ = [
     "__version__",
     "circle",
     "interrupt",
+    "scatter",
     "spell",
     "summon",
 ]

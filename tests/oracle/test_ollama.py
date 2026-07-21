@@ -99,3 +99,29 @@ async def test_404_hints_at_pulling_the_model() -> None:
     oracle = make_oracle(handler)
     with pytest.raises(OracleResponseError, match="ollama pull qwen2.5:7b"):
         await oracle.generate([{"role": "user", "content": "?"}])
+
+
+def test_ollama_format_messages_translates_spell_vocabulary():
+    from sanctum.oracle.ollama import format_messages
+
+    wire = format_messages(
+        [
+            {"role": "user", "content": "count"},
+            {
+                "role": "assistant",
+                "content": "",
+                "spell_calls": [
+                    {"call_id": "x1", "spell": "scry", "arguments": {"topic": "door"}}
+                ],
+            },
+            {"role": "spell", "spell": "scry", "call_id": "x1", "content": "7"},
+        ]
+    )
+    assert wire[1] == {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+            {"function": {"name": "scry", "arguments": {"topic": "door"}}}
+        ],
+    }
+    assert wire[2] == {"role": "tool", "content": "7"}

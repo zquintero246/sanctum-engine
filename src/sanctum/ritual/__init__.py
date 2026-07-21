@@ -20,6 +20,7 @@ from sanctum.ritual.errors import (
 )
 from sanctum.ritual.interrupt import Interrupt, interrupt
 from sanctum.ritual.policies import BackoffFn, SigilPolicy, exponential_backoff
+from sanctum.ritual.scatter import scatter
 from sanctum.ritual.scheduler import RouterFn, Scheduler, SigilFn
 
 __all__ = [
@@ -43,4 +44,5 @@ __all__ = [
     "circle",
     "exponential_backoff",
     "interrupt",
+    "scatter",
 ]

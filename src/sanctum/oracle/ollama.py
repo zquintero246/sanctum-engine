@@ -30,6 +30,48 @@ from sanctum.oracle._shared import (
 from sanctum.oracle.core import Oracle, OracleResponse, SpellCall
 
 
+def format_messages(
+    messages: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Translate sanctum's transcript into Ollama's native chat format.
+
+    Same rationale as the OpenAI adapter's translation: sent verbatim,
+    the chat template would drop ``role: "spell"`` results and the model
+    would never see its own tool output. Ollama's native shape differs
+    from OpenAI's — ``tool_calls`` carry ``arguments`` as a dict (not a
+    JSON string) and results travel as ``role: "tool"``.
+    """
+    formatted: list[dict[str, Any]] = []
+    for original in messages:
+        message = dict(original)
+        if message.get("role") == "assistant" and message.get("spell_calls"):
+            formatted.append(
+                {
+                    "role": "assistant",
+                    "content": message.get("content") or "",
+                    "tool_calls": [
+                        {
+                            "function": {
+                                "name": call.get("spell", ""),
+                                "arguments": dict(call.get("arguments", {})),
+                            }
+                        }
+                        for call in message["spell_calls"]
+                    ],
+                }
+            )
+            continue
+        if message.get("role") == "spell":
+            formatted.append(
+                {"role": "tool", "content": str(message.get("content", ""))}
+            )
+            continue
+        message.pop("spell_calls", None)
+        message.pop("error", None)
+        formatted.append(message)
+    return formatted
+
+
 def build_payload(
     arcana: str,
     messages: Sequence[Mapping[str, Any]],
@@ -41,13 +83,15 @@ def build_payload(
 ) -> dict[str, Any]:
     """Build the /api/chat request body.
 
-    Spell schemas map to Ollama ``tools``; `keep_alive` and `options`
-    (temperature, num_ctx, ...) are included only when set, deferring to
-    the server's defaults otherwise.
+    The transcript is translated through ``format_messages`` (sanctum
+    spell vocabulary → Ollama tool vocabulary); Spell schemas map to
+    Ollama ``tools``; `keep_alive` and `options` (temperature, num_ctx,
+    ...) are included only when set, deferring to the server's defaults
+    otherwise.
     """
     payload: dict[str, Any] = {
         "model": arcana,
-        "messages": [dict(message) for message in messages],
+        "messages": format_messages(messages),
         "stream": stream,
     }
     if spells:
