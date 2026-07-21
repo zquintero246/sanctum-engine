@@ -208,33 +208,41 @@ def render_trace(trace_path: str | Path, html_path: str | Path | None = None) ->
 # --- HTML rendering (single file, inline styles, no external references) ---
 
 _CSS = """
-body { margin: 0; padding: 2rem 3rem; background: #17141f; color: #d9d2c4;
-       font-family: 'Segoe UI', 'Helvetica Neue', sans-serif; font-size: 14px; }
-h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; font-weight: normal;
-             color: #cbb47a; letter-spacing: 0.03em; }
-h1 { font-size: 1.7rem; border-bottom: 1px solid #322c42; padding-bottom: .6rem; }
-h2 { font-size: 1.25rem; margin-top: 2.2rem; }
-.meta { color: #7d768a; }
-.panel { background: #1f1b2a; border: 1px solid #322c42; border-radius: 4px;
+body { margin: 0; padding: 2rem 3rem; background: #050505; color: #cfc8b8;
+       font-family: 'Cascadia Code', 'Cascadia Mono', Consolas, Menlo,
+       monospace; font-size: 13.5px; }
+h1, h2, h3 { font-weight: 600; color: #cfc8b8; letter-spacing: 0.1em; }
+h1 { font-size: 1.5rem; border-bottom: 1px solid #2c2924; padding-bottom: .6rem; }
+h2 { font-size: 1.05rem; margin-top: 2.2rem; text-transform: uppercase;
+     letter-spacing: 0.18em; }
+h2::before { content: "\\2591\\2592\\2593 "; color: #5d574d; }
+.meta { color: #8a8377; }
+.panel { background: #0a0908; border: 1px solid #2c2924; border-radius: 0;
          padding: 1rem 1.2rem; margin: .8rem 0; }
-svg text { font-family: 'Segoe UI', sans-serif; font-size: 12px; }
+svg text { font-family: 'Cascadia Code', Consolas, monospace; font-size: 12px; }
 .bar-row { display: flex; align-items: center; margin: .25rem 0; }
-.bar-label { width: 14rem; color: #b8b1a4; overflow: hidden;
+.bar-label { width: 14rem; color: #cbc4b2; overflow: hidden;
              text-overflow: ellipsis; white-space: nowrap; }
 .bar-track { flex: 1; }
-.bar { background: #4b4162; border-left: 3px solid #cbb47a; height: 1.05rem;
+.bar { background: #2c2924; border-left: 3px solid #d43b2a; height: 1.05rem;
        min-width: 2px; }
-.bar-ms { color: #7d768a; margin-left: .6rem; white-space: nowrap; }
+.bar-ms { color: #8a8377; margin-left: .6rem; white-space: nowrap; }
 details { margin: .5rem 0; }
-summary { cursor: pointer; color: #cbb47a; }
-pre { background: #14111c; border: 1px solid #2a2438; border-radius: 3px;
-      padding: .7rem; overflow-x: auto; color: #c9c2b4; font-size: 12px; }
-.err { color: #c07a5f; }
-.tag { color: #7d768a; font-size: 12px; }
+summary { cursor: pointer; color: #cbc4b2; }
+summary:hover { color: #ffffff; }
+pre { background: #070606; border: 1px solid #2c2924; border-radius: 0;
+      padding: .7rem; overflow-x: auto; color: #cfc8b8; font-size: 12px; }
+pre::-webkit-scrollbar, body::-webkit-scrollbar { height: 8px; width: 8px; }
+pre::-webkit-scrollbar-track, body::-webkit-scrollbar-track { background: #0a0a09; }
+pre::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb {
+  background: #2c2924; border: 2px solid #0a0a09; }
+.err { color: #ff8a76; }
+.tag { color: #5d574d; font-size: 12px; }
 table { border-collapse: collapse; width: 100%; }
-td, th { border-bottom: 1px solid #2a2438; padding: .4rem .6rem;
+td, th { border-bottom: 1px solid #1e1c18; padding: .4rem .6rem;
          text-align: left; vertical-align: top; }
-th { color: #cbb47a; font-weight: normal; font-family: Georgia, serif; }
+th { color: #5d574d; font-weight: normal; text-transform: uppercase;
+     letter-spacing: 0.14em; font-size: 11px; }
 """
 
 
@@ -305,23 +313,23 @@ def _graph_svg(graph: dict[str, Any]) -> str:
             parts.append(
                 f'<path d="M {x1 + 70:.0f} {y1:.0f} Q {bend:.0f} '
                 f'{(y1 + y2) / 2:.0f} {x2 + 70:.0f} {y2:.0f}" fill="none" '
-                f'stroke="#5d5476" stroke-dasharray="5,4"/>'
+                f'stroke="#665f52" stroke-dasharray="5,4"/>'
             )
         else:
             parts.append(
                 f'<line x1="{x1:.0f}" y1="{y1 + 17:.0f}" x2="{x2:.0f}" '
-                f'y2="{y2 - 17:.0f}" stroke="#5d5476"{dash}/>'
+                f'y2="{y2 - 17:.0f}" stroke="#665f52"{dash}/>'
             )
     for node, (x, y) in position.items():
         virtual = node in ("__start__", "__end__")
         label = {"__start__": "START", "__end__": "END"}.get(node, node)
-        fill = "#241f31" if virtual else "#2b2440"
-        stroke = "#5d5476" if virtual else "#cbb47a"
+        fill = "#0a0908" if virtual else "#121210"
+        stroke = "#665f52" if virtual else "#d43b2a"
         parts.append(
             f'<rect x="{x - 70:.0f}" y="{y - 17:.0f}" width="140" height="34" '
             f'rx="6" fill="{fill}" stroke="{stroke}"/>'
             f'<text x="{x:.0f}" y="{y + 4:.0f}" text-anchor="middle" '
-            f'fill="#d9d2c4">{html.escape(label[:18])}</text>'
+            f'fill="#cfc8b8">{html.escape(label[:18])}</text>'
         )
     parts.append("</svg>")
     return "".join(parts)

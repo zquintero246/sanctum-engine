@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sanctum — local-first orchestration for AI agents</title>
-<meta name="description" content="A minimal, local-first orchestration engine for cyclic state graphs. Summon agents, bind tools, run everything on your own machine.">
+<title>Sanctum — orquestación local-first para agentes IA</title>
+<meta name="description" content="Un motor de orquestación mínimo y local-first para grafos de estados cíclicos. Invoca agentes, liga herramientas, ejecuta todo en tu propia máquina.">
 <style>
 :root{
   --bg:#050505; --bg2:#0a0a09; --bg3:#121210; --panel:#0a0908;
@@ -156,13 +156,13 @@ footer a{color:var(--dim);border:none}
 
 <header class="wrap">
   <nav>
-    <a class="brand glitch" data-text="SANCTVM" href="./">SANCTVM</a>
+    <a class="brand glitch" data-text="SANCTVM" href="../">SANCTVM</a>
     <div class="links">
-      <a href="getting-started/">Docs</a>
-      <a href="comparison/">Comparison</a>
+      <a href="../getting-started/">Docs</a>
+      <a href="../comparison/">Comparación</a>
       <a href="https://github.com/zquintero246/sanctum-engine">GitHub</a>
       <a href="https://pypi.org/project/sanctum-engine/">PyPI</a>
-      <a href="es/" title="versión en español">ES</a>
+      <a href="../" title="English version">EN</a>
     </div>
   </nav>
 </header>
@@ -171,23 +171,23 @@ footer a{color:var(--dim);border:none}
   <section id="hero" style="border-top:none">
     <pre id="sigil" aria-hidden="true"></pre>
     <div class="copy">
-      <div class="overline">// local-first orchestration for AI agents</div>
+      <div class="overline">// orquestación local-first para agentes ia</div>
       <h1 class="glitch" data-text="SANCTUM">SANCTUM</h1>
-      <p class="lead">Draw the circle. Bind the sigils. Invoke — a minimal
-      engine for <b style="color:var(--bone)">cyclic state graphs</b> run by
-      supersteps, built to work with the models on <em>your</em> machine.
-      Pure Python standard library at the core. No cloud, no accounts,
-      no telemetry.</p>
+      <p class="lead">Traza el círculo. Liga los sigils. Invoca — un motor
+      mínimo para <b style="color:var(--bone)">grafos de estados cíclicos</b>
+      ejecutados por supersteps, hecho para los modelos de <em>tu</em>
+      máquina. Núcleo en pura librería estándar de Python. Sin nube, sin
+      cuentas, sin telemetría.</p>
       <div class="term-line">$ pip install sanctum-engine</div>
       <div class="cta">
-        <a class="btn primary" href="getting-started/">Get started</a>
-        <a class="btn" href="https://github.com/zquintero246/sanctum-engine">View source</a>
+        <a class="btn primary" href="../getting-started/">Empezar</a>
+        <a class="btn" href="https://github.com/zquintero246/sanctum-engine">Ver el código</a>
       </div>
       <div class="stats">
-        <div class="stat"><b>0</b><span>core dependencies</span></div>
-        <div class="stat"><b>~60µs</b><span>per superstep</span></div>
-        <div class="stat"><b>140</b><span>tests, no models needed</span></div>
-        <div class="stat"><b>MIT</b><span>license</span></div>
+        <div class="stat"><b>0</b><span>dependencias del núcleo</span></div>
+        <div class="stat"><b>~60µs</b><span>por superstep</span></div>
+        <div class="stat"><b>140</b><span>tests, sin modelos</span></div>
+        <div class="stat"><b>MIT</b><span>licencia</span></div>
       </div>
     </div>
   </section>
@@ -196,18 +196,18 @@ footer a{color:var(--dim);border:none}
 <section class="alt" id="agent">
   <div class="wrap split">
     <div>
-      <div class="sect-tag">The model</div>
-      <h2>An agent is a cycle, not a chain</h2>
-      <p>Sanctum executes a <b style="color:var(--bone)">cyclic state
-      graph</b> — not a DAG. Every superstep runs the active Sigils
-      (nodes) in parallel over a shared Aether (state), merges their
-      partial deltas through per-channel reducers, then lets conditional
-      edges decide what wakes next. Think → act → observe → think again:
-      the loop <em>is</em> the agent, bounded by a recursion limit and
-      checkpointed at every step.</p>
-      <p style="margin-top:12px">Deterministic by construction: deltas
-      apply in Sigil insertion order, so parallel runs resolve
-      identically, every time.</p>
+      <div class="sect-tag">El modelo</div>
+      <h2>Un agente es un ciclo, no una cadena</h2>
+      <p>Sanctum ejecuta un <b style="color:var(--bone)">grafo de estados
+      cíclico</b> — no un DAG. Cada superstep corre los Sigils activos
+      (nodos) en paralelo sobre un Aether compartido (estado), funde sus
+      deltas parciales mediante reducers por canal, y deja que los edges
+      condicionales decidan qué despierta después. Pensar → actuar →
+      observar → pensar de nuevo: el ciclo <em>es</em> el agente, acotado
+      por un límite de recursión y con checkpoint en cada paso.</p>
+      <p style="margin-top:12px">Determinista por construcción: los deltas
+      se aplican en orden de inserción de los Sigils, así que las corridas
+      paralelas resuelven idéntico, siempre.</p>
     </div>
     <div>
 <pre><span class="c-k">from</span> sanctum <span class="c-k">import</span> END, Ritual
@@ -220,65 +220,65 @@ ritual.add_edge(<span class="c-s">"think"</span>, <span class="c-s">"act"</span>
 ritual.add_conditional_edge(<span class="c-s">"act"</span>,
     <span class="c-k">lambda</span> aether: END <span class="c-k">if</span> aether[<span class="c-s">"done"</span>] <span class="c-k">else</span> <span class="c-s">"think"</span>)
 
-rite = ritual.compile()          <span class="c-c"># validated, sealed</span>
-rite.invoke({<span class="c-s">"task"</span>: <span class="c-s">"..."</span>})     <span class="c-c"># the loop unfolds</span></pre>
+rite = ritual.compile()          <span class="c-c"># validado, sellado</span>
+rite.invoke({<span class="c-s">"task"</span>: <span class="c-s">"..."</span>})     <span class="c-c"># el ciclo se despliega</span></pre>
     </div>
   </div>
 </section>
 
 <section id="features">
   <div class="wrap">
-    <div class="sect-tag">The machinery</div>
-    <h2>Small surface, serious machinery</h2>
-    <p>One graph builder, one executable plan, and everything an agentic
-    runtime actually needs — nothing it doesn't.</p>
+    <div class="sect-tag">La maquinaria</div>
+    <h2>Superficie pequeña, maquinaria seria</h2>
+    <p>Un builder de grafos, un plan ejecutable, y todo lo que un runtime
+    agéntico necesita de verdad — nada que no.</p>
     <div class="grid">
       <div class="cell"><h3><span class="g">◆</span>BSP supersteps</h3>
-        <p>Pregel-style lockstep: parallel Sigils, deterministic reducer
-        order, conditional edges evaluated against the merged state.</p></div>
-      <div class="cell"><h3><span class="g">⋈</span>Wait-all joins</h3>
-        <p><code>join="all"</code> turns a Sigil into a barrier over its
-        predecessors — uneven branches converge correctly, across
-        supersteps, surviving checkpoints.</p></div>
-      <div class="cell"><h3><span class="g">◎</span>Circles — subgraphs</h3>
-        <p>Mount a compiled Rite as a single Sigil. A summoned agent
-        becomes one node of a larger pipeline; its inner life stays
-        visible as echoed events.</p></div>
+        <p>Lockstep estilo Pregel: Sigils en paralelo, orden determinista de
+        reducers, edges condicionales evaluados sobre el estado fundido.</p></div>
+      <div class="cell"><h3><span class="g">⋈</span>Joins wait-all</h3>
+        <p><code>join="all"</code> vuelve un Sigil una barrera sobre sus
+        predecesores — ramas desiguales convergen bien, entre supersteps,
+        sobreviviendo checkpoints.</p></div>
+      <div class="cell"><h3><span class="g">◎</span>Circles — subgrafos</h3>
+        <p>Monta un Rite compilado como un solo Sigil. Un agente invocado se
+        vuelve un nodo de un pipeline mayor; su vida interna sigue visible
+        como eventos ecoados.</p></div>
       <div class="cell"><h3><span class="g">✳</span>Scatter — map-reduce</h3>
-        <p>Fan out over a runtime-sized list with bounded concurrency;
-        results land in item order. Dynamic parallelism without touching
-        the frontier model.</p></div>
+        <p>Fan-out sobre una lista de tamaño dinámico con concurrencia
+        acotada; los resultados llegan en orden de item. Paralelismo
+        dinámico sin tocar el modelo de frontier.</p></div>
       <div class="cell"><h3><span class="g">☩</span>summon()</h3>
-        <p>The canonical ReAct loop — oracle → spells → oracle → END —
-        assembled entirely from public primitives. Your agent in one
-        call.</p></div>
-      <div class="cell"><h3><span class="g">✦</span>Robust tool-calling</h3>
-        <p>Built for 7–14B local models: malformed JSON repaired, unknown
-        Spells corrected conversationally, prompted fallback when the
-        server has no native tools.</p></div>
-      <div class="cell"><h3><span class="g">◈</span>Seals &amp; time-travel</h3>
-        <p>JSON checkpoints per superstep (memory / SQLite / Postgres);
-        resume, <code>interrupt()</code> for human-in-the-loop, replay
-        from any historic Seal.</p></div>
-      <div class="cell"><h3><span class="g">⚡</span>Streaming Omens</h3>
-        <p>Typed, timestamped events for every lifecycle point;
-        combinable modes; live tokens pushed from inside a running
-        Sigil.</p></div>
-      <div class="cell"><h3><span class="g">↯</span>Resilience policies</h3>
-        <p>Per-Sigil timeout, retries with backoff and jitter, fallback
-        Sigils reading a reserved error channel. Failure is a path, not
-        a crash.</p></div>
-      <div class="cell"><h3><span class="g">▣</span>Wards middleware</h3>
-        <p>Transform or veto any delta before it touches state: audit
-        trails, usage tallies, redaction — applied before Seals and logs
-        ever see the data.</p></div>
-      <div class="cell"><h3><span class="g">◉</span>Local tracing</h3>
-        <p>A complete execution trace rendered to one self-contained HTML
-        file. Zero external requests — your LangSmith is a file on
-        disk.</p></div>
-      <div class="cell"><h3><span class="g">∅</span>Zero-dependency core</h3>
-        <p>The engine is pure Python stdlib. HTTP adapters, Postgres,
-        in-process GGUF — all optional extras, all lazily imported.</p></div>
+        <p>El ciclo ReAct canónico — oracle → spells → oracle → END —
+        armado por completo con primitivas públicas. Tu agente en una
+        llamada.</p></div>
+      <div class="cell"><h3><span class="g">✦</span>Tool-calling robusto</h3>
+        <p>Hecho para modelos locales de 7–14B: JSON malformado reparado,
+        Spells desconocidos corregidos conversacionalmente, fallback
+        prompted cuando el servidor no tiene tools nativas.</p></div>
+      <div class="cell"><h3><span class="g">◈</span>Seals y time-travel</h3>
+        <p>Checkpoints JSON por superstep (memoria / SQLite / Postgres);
+        reanudación, <code>interrupt()</code> para human-in-the-loop,
+        replay desde cualquier Seal histórico.</p></div>
+      <div class="cell"><h3><span class="g">⚡</span>Omens en streaming</h3>
+        <p>Eventos tipados y con timestamp para cada punto del ciclo de
+        vida; modos combinables; tokens en vivo desde dentro de un Sigil
+        corriendo.</p></div>
+      <div class="cell"><h3><span class="g">↯</span>Políticas de resiliencia</h3>
+        <p>Timeout por Sigil, reintentos con backoff y jitter, Sigils de
+        fallback leyendo un canal de error reservado. El fallo es un
+        camino, no un crash.</p></div>
+      <div class="cell"><h3><span class="g">▣</span>Middleware de Wards</h3>
+        <p>Transforma o veta cualquier delta antes de que toque el estado:
+        auditoría, conteo de uso, redacción — aplicados antes de que Seals
+        y logs vean los datos.</p></div>
+      <div class="cell"><h3><span class="g">◉</span>Trazas locales</h3>
+        <p>Una traza de ejecución completa renderizada a un solo HTML
+        autocontenido. Cero requests externos — tu LangSmith es un archivo
+        en disco.</p></div>
+      <div class="cell"><h3><span class="g">∅</span>Núcleo sin dependencias</h3>
+        <p>El motor es pura stdlib de Python. Adapters HTTP, Postgres, GGUF
+        in-process — todos extras opcionales, todos con import perezoso.</p></div>
     </div>
   </div>
 </section>
@@ -287,16 +287,16 @@ rite.invoke({<span class="c-s">"task"</span>: <span class="c-s">"..."</span>})  
   <div class="wrap split">
     <div>
       <div class="sect-tag">Local first</div>
-      <h2>Built for the models you actually run</h2>
-      <p>One OpenAI-compatible adapter covers llama-server, vLLM,
-      LM Studio and Ollama's <code>/v1</code>; a native Ollama adapter
-      and in-process GGUF loading round it out. The transcript is
-      translated to each server's tool wire format, so local models
-      genuinely see their tool results — and small models stop
-      re-calling the same tool forever.</p>
-      <p style="margin-top:12px">Tests never require a model: a scripted
-      oracle makes every flow deterministic, and the integration suite
-      against a real server is strictly opt-in.</p>
+      <h2>Hecho para los modelos que sí corres</h2>
+      <p>Un adapter OpenAI-compatible cubre llama-server, vLLM, LM Studio
+      y el <code>/v1</code> de Ollama; el adapter nativo de Ollama y la
+      carga de GGUF in-process lo completan. El transcript se traduce al
+      formato de tools de cada servidor, así que los modelos locales ven
+      de verdad los resultados de sus herramientas — y los modelos chicos
+      dejan de re-llamar la misma tool por siempre.</p>
+      <p style="margin-top:12px">Los tests jamás requieren un modelo: un
+      oracle guionado vuelve determinista cada flujo, y la suite de
+      integración contra un servidor real es estrictamente opt-in.</p>
     </div>
     <div>
 <pre><span class="c-k">from</span> sanctum.oracle.openai_compat <span class="c-k">import</span> OpenAICompatibleOracle
@@ -307,44 +307,44 @@ oracle = OpenAICompatibleOracle(
 )
 entity = summon(oracle, tome,
     role=<span class="c-s">"You are a scryer."</span>,
-    spell_calling=<span class="c-s">"auto"</span>)  <span class="c-c"># prompted fallback included</span></pre>
+    spell_calling=<span class="c-s">"auto"</span>)  <span class="c-c"># fallback prompted incluido</span></pre>
     </div>
   </div>
 </section>
 
 <section id="compare">
   <div class="wrap">
-    <div class="sect-tag">The honest table</div>
-    <h2>An honest comparison</h2>
+    <div class="sect-tag">La tabla honesta</div>
+    <h2>Una comparación honesta</h2>
     <table>
       <tr><th></th><th>Sanctum</th><th>LangGraph</th><th>n8n</th></tr>
-      <tr><td>Core dependencies</td><td><span class="yes">0 (stdlib)</span></td><td>langchain-core + more</td><td>Node.js platform</td></tr>
-      <tr><td>Local models as first-class</td><td><span class="yes">yes — the point</span></td><td>possible</td><td>via nodes</td></tr>
-      <tr><td>Cyclic graphs / supersteps</td><td><span class="yes">yes (BSP)</span></td><td><span class="yes">yes (Pregel)</span></td><td><span class="no">DAG-ish</span></td></tr>
-      <tr><td>Checkpoints &amp; time-travel</td><td><span class="yes">yes, JSON</span></td><td><span class="yes">yes</span></td><td>executions log</td></tr>
-      <tr><td>Tool-repair for small models</td><td><span class="yes">built-in</span></td><td><span class="no">no</span></td><td><span class="no">no</span></td></tr>
-      <tr><td>Tracing without a SaaS</td><td><span class="yes">one HTML file</span></td><td>LangSmith (cloud)</td><td>built-in UI</td></tr>
+      <tr><td>Dependencias del núcleo</td><td><span class="yes">0 (stdlib)</span></td><td>langchain-core + more</td><td>Node.js platform</td></tr>
+      <tr><td>Modelos locales de primera clase</td><td><span class="yes">sí — el punto</span></td><td>posible</td><td>vía nodos</td></tr>
+      <tr><td>Grafos cíclicos / supersteps</td><td><span class="yes">sí (BSP)</span></td><td><span class="yes">sí (Pregel)</span></td><td><span class="no">DAG-ish</span></td></tr>
+      <tr><td>Checkpoints y time-travel</td><td><span class="yes">sí, JSON</span></td><td><span class="yes">sí</span></td><td>log de ejecuciones</td></tr>
+      <tr><td>Reparación de tools para modelos chicos</td><td><span class="yes">incluida</span></td><td><span class="no">no</span></td><td><span class="no">no</span></td></tr>
+      <tr><td>Trazas sin SaaS</td><td><span class="yes">un archivo HTML</span></td><td>LangSmith (cloud)</td><td>UI incluida</td></tr>
     </table>
-    <p style="margin-top:16px;font-size:.85rem"><a href="comparison/">Full 13-row comparison, including where LangGraph is the better choice →</a></p>
+    <p style="margin-top:16px;font-size:.85rem"><a href="../comparison/">Comparación completa de 13 filas, incluyendo dónde LangGraph es la mejor opción →</a></p>
   </div>
 </section>
 
 <section class="alt" id="ecosystem">
   <div class="wrap">
-    <div class="sect-tag">The ecosystem</div>
-    <h2>The engine and the spellbook</h2>
+    <div class="sect-tag">El ecosistema</div>
+    <h2>El motor y el libro de hechizos</h2>
     <div class="eco">
       <div class="card">
         <h3><span class="g">◆</span> sanctum-engine</h3>
-        <p>Execution: the graph, the state, the scheduler, the Oracles,
-        the resilience. Everything on this page.</p>
+        <p>Ejecución: el grafo, el estado, el scheduler, los Oracles, la
+        resiliencia. Todo lo de esta página.</p>
         <p style="margin-top:10px"><a href="https://github.com/zquintero246/sanctum-engine">GitHub</a> · <a href="https://pypi.org/project/sanctum-engine/">PyPI</a></p>
       </div>
       <div class="card">
         <h3><span class="g">✦</span> AgentGrimoire</h3>
-        <p>Capability: a folder-per-Spell tool library, loadable by
-        convention with <code>Tome.load_from_directory()</code>. Either
-        side evolves without touching the other.</p>
+        <p>Capacidad: una biblioteca de herramientas con carpeta por Spell,
+        cargable por convención con <code>Tome.load_from_directory()</code>.
+        Cada lado evoluciona sin tocar al otro.</p>
         <p style="margin-top:10px"><a href="https://github.com/zquintero246/AgentGrimoire">GitHub</a></p>
       </div>
     </div>
@@ -354,10 +354,10 @@ entity = summon(oracle, tome,
 <footer>
   <div class="wrap">
     <span class="skull">☠</span>
-    <span>SANCTVM — the chamber is open. Local-only · no telemetry.</span>
+    <span>SANCTVM — la cámara está abierta. Solo local · sin telemetría.</span>
     <div class="links">
-      <a href="getting-started/">Docs</a>
-      <a href="architecture/">Design document</a>
+      <a href="../getting-started/">Docs</a>
+      <a href="../architecture/">Documento de diseño</a>
       <a href="https://github.com/zquintero246/sanctum-engine">GitHub</a>
       <a href="https://pypi.org/project/sanctum-engine/">PyPI</a>
     </div>

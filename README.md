@@ -10,6 +10,8 @@
 [![license: MIT](https://img.shields.io/badge/license-MIT-7e211a)](LICENSE)
 [![python](https://img.shields.io/pypi/pyversions/sanctum-engine?color=5d574d)](pyproject.toml)
 
+> 🇪🇸 [Lee esto en español](README.es.md)
+
 *Where agents are summoned, bound, and set to work — a minimal, local-first
 orchestration engine for cyclic state graphs.*
 
@@ -30,7 +32,7 @@ entirely on local models.
 [Comparison with LangGraph / n8n / ADK](https://zquintero246.github.io/sanctum-engine/comparison/) ·
 [Design document](docs/architecture.md)
 
-![The self-contained trace viewer (illustration of render_trace output)](docs/assets/trace-viewer.svg)
+![The self-contained trace viewer (real render_trace capture)](docs/assets/trace-viewer.png)
 
 ## Features
 

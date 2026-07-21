@@ -47,5 +47,6 @@ nav:
       - Robust tool-calling: guides/robust-tool-calling.md
       - Tracing & the HTML viewer: guides/tracing.md
   - Comparison: comparison.md
+  - Español: es/index.md
   - API reference: api.md
   - Architecture (design doc): architecture.md

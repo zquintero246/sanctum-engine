@@ -36,8 +36,11 @@ jobs:
       # The landing page replaces the generated docs home at the site root;
       # every other docs URL is untouched. Docs remain reachable through the
       # landing's "Get started" / nav links.
-      - name: Overlay landing page at the site root
-        run: cp landing/index.html site/index.html
+      - name: Overlay landing pages at the site root
+        run: |
+          cp landing/index.html site/index.html
+          mkdir -p site/es
+          cp landing/index.es.html site/es/index.html
 
       - uses: actions/upload-pages-artifact@v3
         with:
